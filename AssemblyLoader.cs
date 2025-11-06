@@ -16,7 +16,8 @@ namespace fishmods
                     // The name is constructed from the default namespace and the path to the file.
                     using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("MIMESIS_Mod_Menu.Libs.shadcnui.dll"))
                     {
-                        if (stream == null) return null;
+                        if (stream == null)
+                            return null;
                         byte[] assemblyData = new byte[stream.Length];
                         stream.Read(assemblyData, 0, assemblyData.Length);
                         return Assembly.Load(assemblyData);
@@ -25,6 +26,7 @@ namespace fishmods
                 return null;
             };
         }
+
         public static void Init() { }
     }
 }

@@ -2,15 +2,15 @@
  * Made by https://github.com/official-notfishvr
  * https://github.com/official-notfishvr/MIMESIS-Mod-Menu
 */
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using Mimic;
 using Mimic.Actors;
 using Mimic.Audio;
 using Mimic.InputSystem;
 using ReluProtocol;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using UnityEngine;
 
 public static class GameAPI
@@ -23,7 +23,8 @@ public static class GameAPI
     public static VWorld GetVWorld()
     {
         Hub hub = GetHub();
-        if (hub == null) return null;
+        if (hub == null)
+            return null;
 
         return ModHelper.GetFieldValue<VWorld>(hub, "vworld");
     }
@@ -31,7 +32,8 @@ public static class GameAPI
     public static VRoomManager GetVRoomManager()
     {
         VWorld vworld = GetVWorld();
-        if (vworld == null) return null;
+        if (vworld == null)
+            return null;
 
         return ModHelper.GetFieldValue<VRoomManager>(vworld, "VRoomManager");
     }
@@ -39,7 +41,8 @@ public static class GameAPI
     public static IVroom GetRoom(long roomID)
     {
         VRoomManager roomManager = GetVRoomManager();
-        if (roomManager == null) return null;
+        if (roomManager == null)
+            return null;
 
         object roomDict = ModHelper.GetFieldValue(roomManager, "_roomDict");
         if (roomDict is System.Collections.IDictionary dict)
@@ -52,7 +55,8 @@ public static class GameAPI
     public static IVroom[] GetAllRooms()
     {
         VRoomManager roomManager = GetVRoomManager();
-        if (roomManager == null) return new IVroom[0];
+        if (roomManager == null)
+            return new IVroom[0];
 
         object roomDict = ModHelper.GetFieldValue(roomManager, "_roomDict");
         if (roomDict is System.Collections.IDictionary dict)
@@ -71,7 +75,8 @@ public static class GameAPI
     public static Hub.PersistentData GetPersistentData()
     {
         Hub hub = GetHub();
-        if (hub == null) return null;
+        if (hub == null)
+            return null;
 
         return ModHelper.GetFieldValue<Hub.PersistentData>(hub, "pdata");
     }
@@ -109,17 +114,12 @@ public static class GameAPI
     public static LootingLevelObject[] GetLootNearby(float maxDistance, Vector3? searchCenter = null)
     {
         Vector3 center = searchCenter ?? GetLocalPlayer()?.transform.position ?? Vector3.zero;
-        return FindObjectsOfType<LootingLevelObject>()
-            .Where(l => l != null && l.gameObject.activeInHierarchy &&
-                   Vector3.Distance(l.transform.position, center) <= maxDistance)
-            .ToArray();
+        return FindObjectsOfType<LootingLevelObject>().Where(l => l != null && l.gameObject.activeInHierarchy && Vector3.Distance(l.transform.position, center) <= maxDistance).ToArray();
     }
 
     public static LootingLevelObject[] GetLootByName(string name)
     {
-        return FindObjectsOfType<LootingLevelObject>()
-            .Where(l => l != null && l.gameObject.name.Contains(name))
-            .ToArray();
+        return FindObjectsOfType<LootingLevelObject>().Where(l => l != null && l.gameObject.name.Contains(name)).ToArray();
     }
 
     public static StatManager GetLocalStatManager()
@@ -157,11 +157,11 @@ public static class GameAPI
 
     public static List<InventoryItem> GetInventoryItems(ProtoActor actor)
     {
-        if (actor == null) return new List<InventoryItem>();
+        if (actor == null)
+            return new List<InventoryItem>();
 
         object inventory = GetInventory(actor);
-        return inventory != null ? ModHelper.GetFieldValue<List<InventoryItem>>(inventory, "SlotItems")
-            ?? new List<InventoryItem>() : new List<InventoryItem>();
+        return inventory != null ? ModHelper.GetFieldValue<List<InventoryItem>>(inventory, "SlotItems") ?? new List<InventoryItem>() : new List<InventoryItem>();
     }
 
     public static ProtoActor FindActorWhere(Func<ProtoActor, bool> predicate)
@@ -190,12 +190,14 @@ public static class GameAPI
         }
     }
 
-    public static T[] FindObjectsOfType<T>() where T : Component
+    public static T[] FindObjectsOfType<T>()
+        where T : Component
     {
         return UnityEngine.Object.FindObjectsOfType<T>();
     }
 
-    public static T FindObjectOfType<T>() where T : Component
+    public static T FindObjectOfType<T>()
+        where T : Component
     {
         return UnityEngine.Object.FindObjectOfType<T>();
     }
@@ -272,82 +274,91 @@ public static class GameAPI
 
     public static VPlayer GetVPlayerInRoom(IVroom room, int actorID)
     {
-        if (room == null) return null;
-        return ModHelper.GetFieldValue<Dictionary<int, VPlayer>>(room, "_vPlayerDict")
-            ?.Values
-            .FirstOrDefault(p => p.ObjectID == actorID);
+        if (room == null)
+            return null;
+        return ModHelper.GetFieldValue<Dictionary<int, VPlayer>>(room, "_vPlayerDict")?.Values.FirstOrDefault(p => p.ObjectID == actorID);
     }
 
     public static List<VPlayer> GetAllVPlayersInRoom(IVroom room)
     {
-        if (room == null) return new List<VPlayer>();
+        if (room == null)
+            return new List<VPlayer>();
         var dict = ModHelper.GetFieldValue<Dictionary<int, VPlayer>>(room, "_vPlayerDict");
         return dict?.Values.ToList() ?? new List<VPlayer>();
     }
 
     public static List<VActor> GetAllVActorsInRoom(IVroom room)
     {
-        if (room == null) return new List<VActor>();
+        if (room == null)
+            return new List<VActor>();
         var dict = ModHelper.GetFieldValue<Dictionary<int, VActor>>(room, "_vActorDict");
         return dict?.Values.ToList() ?? new List<VActor>();
     }
 
     public static VActor GetVActorInRoom(IVroom room, int actorID)
     {
-        if (room == null) return null;
+        if (room == null)
+            return null;
         var dict = ModHelper.GetFieldValue<Dictionary<int, VActor>>(room, "_vActorDict");
         return dict != null && dict.ContainsKey(actorID) ? dict[actorID] : null;
     }
 
     public static int GetRoomPlayerCount(IVroom room)
     {
-        if (room == null) return 0;
+        if (room == null)
+            return 0;
         var dict = ModHelper.GetFieldValue<Dictionary<int, VPlayer>>(room, "_vPlayerDict");
         return dict?.Count ?? 0;
     }
 
     public static int GetRoomActorCount(IVroom room)
     {
-        if (room == null) return 0;
+        if (room == null)
+            return 0;
         var dict = ModHelper.GetFieldValue<Dictionary<int, VActor>>(room, "_vActorDict");
         return dict?.Count ?? 0;
     }
 
     public static long GetRoomID(IVroom room)
     {
-        if (room == null) return 0;
+        if (room == null)
+            return 0;
         return ModHelper.GetFieldValue<long>(room, "RoomID");
     }
 
     public static int GetRoomMasterID(IVroom room)
     {
-        if (room == null) return 0;
+        if (room == null)
+            return 0;
         return ModHelper.GetFieldValue<int>(room, "MasterID");
     }
 
     public static bool IsRoomPlayable(IVroom room)
     {
-        if (room == null) return false;
+        if (room == null)
+            return false;
         return ModHelper.InvokeMethod(room, "IsPlayable") is bool result && result;
     }
 
     public static int GetCurrentGameDay(IVroom room)
     {
-        if (room == null) return 0;
+        if (room == null)
+            return 0;
         return ModHelper.GetFieldValue<int>(room, "_currentDay");
     }
 
     public static int GetCurrentSessionCycle(IVroom room)
     {
-        if (room == null) return 0;
+        if (room == null)
+            return 0;
         return ModHelper.GetFieldValue<int>(room, "_currentSessionCount");
     }
 
     public static Dictionary<int, ILevelObjectInfo> GetRoomLevelObjects(IVroom room)
     {
-        if (room == null) return new Dictionary<int, ILevelObjectInfo>();
-        return ModHelper.GetFieldValue<Dictionary<int, ILevelObjectInfo>>(room, "_levelObjects")
-            ?? new Dictionary<int, ILevelObjectInfo>();
+        if (room == null)
+            return new Dictionary<int, ILevelObjectInfo>();
+        return ModHelper.GetFieldValue<Dictionary<int, ILevelObjectInfo>>(room, "_levelObjects") ?? new Dictionary<int, ILevelObjectInfo>();
     }
 
     public static List<VPlayer> FindPlayersInRoomByName(IVroom room, string name)
@@ -387,7 +398,8 @@ public static class ModHelper
 
     public static object GetFieldValue(object target, string fieldName)
     {
-        if (target == null) return null;
+        if (target == null)
+            return null;
 
         FieldInfo field = target.GetType().GetField(fieldName, DefaultFlags);
         return field?.GetValue(target);
@@ -407,7 +419,8 @@ public static class ModHelper
 
     public static void SetFieldValue(object target, string fieldName, object value)
     {
-        if (target == null) return;
+        if (target == null)
+            return;
 
         FieldInfo field = target.GetType().GetField(fieldName, DefaultFlags);
         if (field != null)
@@ -418,10 +431,12 @@ public static class ModHelper
 
     public static object InvokeMethod(object target, string methodName, params object[] parameters)
     {
-        if (target == null) return null;
+        if (target == null)
+            return null;
 
         MethodInfo method = target.GetType().GetMethod(methodName, DefaultFlags);
-        if (method == null) return null;
+        if (method == null)
+            return null;
 
         return method.Invoke(target, parameters.Length > 0 ? parameters : null);
     }

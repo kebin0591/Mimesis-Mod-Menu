@@ -14,7 +14,8 @@ public class ESPMain
 
     public static void Initialize()
     {
-        if (isInitialized) return;
+        if (isInitialized)
+            return;
 
         cachedLineTexture = new Texture2D(1, 1);
         cachedLineTexture.filterMode = FilterMode.Point;
@@ -25,10 +26,12 @@ public class ESPMain
 
     public static void UpdateESP()
     {
-        if (!MainGUI.espEnabled || !isInitialized) return;
+        if (!MainGUI.espEnabled || !isInitialized)
+            return;
 
         mainCamera = Camera.main;
-        if (mainCamera == null) return;
+        if (mainCamera == null)
+            return;
 
         float currentTime = Time.realtimeSinceStartup;
         if (currentTime - lastUpdateTime >= CACHE_UPDATE_INTERVAL)
@@ -45,13 +48,15 @@ public class ESPMain
         cachedLootObjects.Clear();
         LootingLevelObject[] allLoot = UnityEngine.Object.FindObjectsOfType<LootingLevelObject>();
 
-        if (allLoot == null || allLoot.Length == 0) return;
+        if (allLoot == null || allLoot.Length == 0)
+            return;
 
         Vector3 camPos = mainCamera.transform.position;
 
         foreach (var loot in allLoot)
         {
-            if (loot == null || !loot.gameObject.activeInHierarchy) continue;
+            if (loot == null || !loot.gameObject.activeInHierarchy)
+                continue;
 
             float distance = Vector3.Distance(camPos, loot.transform.position);
             if (distance <= MainGUI.espDistance)
@@ -63,16 +68,19 @@ public class ESPMain
 
     private static void DrawLootESP()
     {
-        if (mainCamera == null) return;
+        if (mainCamera == null)
+            return;
 
         foreach (var loot in cachedLootObjects)
         {
-            if (loot == null || !loot.gameObject.activeInHierarchy) continue;
+            if (loot == null || !loot.gameObject.activeInHierarchy)
+                continue;
 
             Vector3 worldPos = loot.transform.position;
             Vector3 screenPos = mainCamera.WorldToScreenPoint(worldPos);
 
-            if (screenPos.z <= 0) continue;
+            if (screenPos.z <= 0)
+                continue;
 
             screenPos.y = Screen.height - screenPos.y;
 
@@ -85,7 +93,6 @@ public class ESPMain
             DrawESPText(screenPos, displayText);
         }
     }
-
 
     private static void DrawESPText(Vector3 screenPos, string text)
     {
@@ -102,10 +109,10 @@ public class ESPMain
         GUI.Label(textRect, text, style);
     }
 
-
     private static string CleanObjectName(string name)
     {
-        if (string.IsNullOrEmpty(name)) return "Item";
+        if (string.IsNullOrEmpty(name))
+            return "Item";
 
         name = System.Text.RegularExpressions.Regex.Replace(name, @"\(Clone\)", "");
         name = System.Text.RegularExpressions.Regex.Replace(name, @"prefab", "");

@@ -1,4 +1,8 @@
-﻿using HarmonyLib;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using HarmonyLib;
 using Mimic;
 using Mimic.Actors;
 using ReluProtocol;
@@ -7,10 +11,6 @@ using shadcnui.GUIComponents.Core;
 using shadcnui.GUIComponents.Data;
 using shadcnui.GUIComponents.Display;
 using shadcnui.GUIComponents.Layout;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using UnityEngine;
 using Input = UnityEngine.Input;
 
@@ -37,12 +37,7 @@ public class MainGUI : MonoBehaviour
     void Start()
     {
         guiHelper = new GUIHelper();
-        demoTabs = new Tabs.TabConfig[]
-        {
-            new Tabs.TabConfig("Local Player", DrawLocalPlayerTab),
-            new Tabs.TabConfig("ESP", DrawESPTab),
-            new Tabs.TabConfig("Inventory", DrawInventoryTab),
-        };
+        demoTabs = new Tabs.TabConfig[] { new Tabs.TabConfig("Local Player", DrawLocalPlayerTab), new Tabs.TabConfig("ESP", DrawESPTab), new Tabs.TabConfig("Inventory", DrawInventoryTab) };
 
         ESPMain.Initialize();
         ApplyHarmonyPatches();
@@ -95,7 +90,7 @@ public class MainGUI : MonoBehaviour
                 {
                     scrollPosition = guiHelper.DrawScrollView(scrollPosition, DrawCurrentTabContent, GUILayout.Height(650));
                 },
-                maxLines: 2
+                maxLines: 1
             );
 
             guiHelper.EndAnimatedGUI();
@@ -260,7 +255,8 @@ public class MainGUI : MonoBehaviour
         catch (Exception ex)
         {
             Debug.LogError($"Error picking up item: {ex.Message}");
-            if (pickupQueue.Count > 0) pickupQueue.RemoveAt(0);
+            if (pickupQueue.Count > 0)
+                pickupQueue.RemoveAt(0);
             pickupCooldown = 0.05f;
         }
     }
@@ -274,7 +270,8 @@ public class MainGUI : MonoBehaviour
 
     void MaxItemDurability(ProtoActor player)
     {
-        if (player == null) return;
+        if (player == null)
+            return;
         try
         {
             List<InventoryItem> items = GameAPI.GetInventoryItems(player);
@@ -300,7 +297,7 @@ public class MainGUI : MonoBehaviour
 
     void ApplyHarmonyPatches()
     {
-        Harmony harmony = new Harmony("com.mod.patches");
+        HarmonyLib.Harmony harmony = new HarmonyLib.Harmony("com.mod.patches");
 
         var originalOnDamaged = AccessTools.Method(typeof(StatManager), "OnDamaged");
         if (originalOnDamaged != null)

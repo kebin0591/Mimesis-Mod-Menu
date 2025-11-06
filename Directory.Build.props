@@ -4,8 +4,8 @@
         <!-- Game paths -->
         <GamePath>C:\Users\Administrator\Downloads\Files\MIMESIS-SteamRIP.com\MIMESIS</GamePath>
         <GameAssemblyPath>$(GamePath)\MIMESIS_Data\Managed</GameAssemblyPath>
-        <BepInExAssemblyPath>$(GamePath)\BepInEx\core</BepInExAssemblyPath>
-        <PluginsPath>$(GamePath)\BepInEx\plugins</PluginsPath>
+        <BepInExAssemblyPath>$(GamePath)\MelonLoader\net6</BepInExAssemblyPath>
+        <PluginsPath>$(GamePath)\Mods</PluginsPath>
     </PropertyGroup>
     <PropertyGroup>
         <DebugType>pdbonly</DebugType>
