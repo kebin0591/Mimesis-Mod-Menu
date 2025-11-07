@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using Mimic.Actors;
+using ReluProtocol.Enum;
 using UnityEngine;
 
 public class ESPMain
@@ -7,6 +9,7 @@ public class ESPMain
     private static Texture2D cachedLineTexture;
     private static Camera mainCamera;
     private static List<LootingLevelObject> cachedLootObjects = new List<LootingLevelObject>();
+    private static List<ProtoActor> cachedActors = new List<ProtoActor>();
     private static Dictionary<int, int> priceCache = new Dictionary<int, int>();
     private static float lastUpdateTime = 0f;
     private const float CACHE_UPDATE_INTERVAL = 0.5f;
@@ -37,10 +40,12 @@ public class ESPMain
         if (currentTime - lastUpdateTime >= CACHE_UPDATE_INTERVAL)
         {
             UpdateLootCache();
+            UpdateActorCache();
             lastUpdateTime = currentTime;
         }
 
         DrawLootESP();
+        DrawActorESP();
     }
 
     private static void UpdateLootCache()
@@ -66,9 +71,35 @@ public class ESPMain
         }
     }
 
+    private static void UpdateActorCache()
+    {
+        cachedActors.Clear();
+        ProtoActor[] allActors = GameAPI.GetOtherPlayers();
+
+        if (allActors == null || allActors.Length == 0)
+            return;
+
+        Vector3 camPos = mainCamera.transform.position;
+
+        foreach (var actor in allActors)
+        {
+            if (actor == null || actor.gameObject == null || !actor.gameObject.activeInHierarchy)
+                continue;
+
+            if (actor.ActorType == ActorType.None || actor.ActorType == ActorType.System)
+                continue;
+
+            float distance = Vector3.Distance(camPos, actor.transform.position);
+            if (distance <= MainGUI.espDistance)
+            {
+                cachedActors.Add(actor);
+            }
+        }
+    }
+
     private static void DrawLootESP()
     {
-        if (mainCamera == null)
+        if (mainCamera == null || !MainGUI.espShowLoot)
             return;
 
         foreach (var loot in cachedLootObjects)
@@ -87,17 +118,78 @@ public class ESPMain
             float distance = Vector3.Distance(mainCamera.transform.position, worldPos);
             string itemName = CleanObjectName(loot.gameObject.name);
 
-            string priceText = ""; // not setup
+            string priceText = "";
             string displayText = $"{itemName}\n{priceText} [{distance:F0}m]";
 
-            DrawESPText(screenPos, displayText);
+            DrawESPText(screenPos, displayText, Color.white);
         }
     }
 
-    private static void DrawESPText(Vector3 screenPos, string text)
+    private static void DrawActorESP()
+    {
+        if (mainCamera == null)
+            return;
+
+        foreach (var actor in cachedActors)
+        {
+            if (actor == null || actor.gameObject == null || !actor.gameObject.activeInHierarchy)
+                continue;
+
+            Vector3 worldPos = actor.transform.position;
+            Vector3 screenPos = mainCamera.WorldToScreenPoint(worldPos);
+
+            if (screenPos.z <= 0)
+                continue;
+
+            screenPos.y = Screen.height - screenPos.y;
+
+            float distance = Vector3.Distance(mainCamera.transform.position, worldPos);
+            string actorName = actor.nickName ?? actor.gameObject.name;
+            string actorType = GetActorTypeLabel(actor.ActorType);
+            Color displayColor = GetActorTypeColor(actor.ActorType);
+
+            string displayText = $"{actorType}\n{actorName}\n[{distance:F0}m]";
+
+            DrawESPText(screenPos, displayText, displayColor);
+        }
+    }
+
+    private static string GetActorTypeLabel(ActorType type)
+    {
+        return type switch
+        {
+            ActorType.Player => "[PLAYER]",
+            ActorType.Monster => "[MONSTER]",
+            ActorType.Interactor => "[INTERACTOR]",
+            ActorType.NPC => "[NPC]",
+            ActorType.LootingObject => "[LOOT]",
+            ActorType.FieldSkill => "[FIELD SKILL]",
+            ActorType.Projectile => "[PROJECTILE]",
+            ActorType.AuraSkill => "[AURA SKILL]",
+            _ => "[UNKNOWN]",
+        };
+    }
+
+    private static Color GetActorTypeColor(ActorType type)
+    {
+        return type switch
+        {
+            ActorType.Player => MainGUI.espColor,
+            ActorType.Monster => Color.red,
+            ActorType.Interactor => Color.cyan,
+            ActorType.NPC => Color.green,
+            ActorType.LootingObject => Color.yellow,
+            ActorType.FieldSkill => new Color(1f, 0.5f, 0f), // Orange
+            ActorType.Projectile => Color.magenta,
+            ActorType.AuraSkill => new Color(0.5f, 0f, 1f), // Purple
+            _ => Color.white,
+        };
+    }
+
+    private static void DrawESPText(Vector3 screenPos, string text, Color textColor)
     {
         GUIStyle style = new GUIStyle(GUI.skin.label);
-        style.normal.textColor = MainGUI.espColor;
+        style.normal.textColor = textColor;
         style.fontSize = 11;
         style.fontStyle = FontStyle.Bold;
         style.alignment = TextAnchor.MiddleCenter;
@@ -134,6 +226,7 @@ public class ESPMain
     public static void Cleanup()
     {
         cachedLootObjects.Clear();
+        cachedActors.Clear();
         priceCache.Clear();
 
         if (cachedLineTexture != null)

@@ -1,5 +1,5 @@
-using MIMESIS_Mod_Menu;
 using MelonLoader;
+using MIMESIS_Mod_Menu;
 using UnityEngine;
 
 [assembly: MelonInfo(typeof(MIMESIS_Mod_Menu.Loader), "ModMenu", "1.0.0", "notfishvr")]
@@ -11,9 +11,7 @@ namespace MIMESIS_Mod_Menu
     {
         private GameObject gui;
 
-        public override void OnInitializeMelon()
-        {
-        }
+        public override void OnInitializeMelon() { }
 
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
         {
