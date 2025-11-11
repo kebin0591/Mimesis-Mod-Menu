@@ -3,10 +3,5 @@
     <Target Name="CopyToPlugins" AfterTargets="Build">
         <Copy SourceFiles="$(TargetPath)" DestinationFiles="$(PluginsPath)\$(TargetFileName)" />
         <Message Text="Copied to Plugins: $(TargetFileName)" Importance="high" />
-        <ItemGroup>
-            <ShadcnuiDLL Include="Libs\shadcnui.dll" />
-        </ItemGroup>
-        <Copy SourceFiles="@(ShadcnuiDLL)" DestinationFolder="$(PluginsPath)" ContinueOnError="true" />
-        <Message Text="Copied shadcnui.dll to Plugins" Importance="high" Condition="Exists('Libs\shadcnui.dll')" />
     </Target>
 </Project>

@@ -2,6 +2,8 @@
     <PropertyGroup>
         <TargetFramework>netstandard2.1</TargetFramework>
         <Nullable>enable</Nullable>
+        <WarningLevel>4</WarningLevel>
+        <NoWarn>$(NoWarn);MSB3277;MSB3270</NoWarn>
     </PropertyGroup>
     <ItemGroup>
         <Reference Include="0Harmony">
@@ -209,7 +211,10 @@
             <HintPath>$(GameAssemblyPath)\sc.posteffects.runtime.dll</HintPath>
         </Reference>
         <Reference Include="shadcnui">
-            <HintPath>Libs\shadcnui.dll</HintPath>
+            <HintPath>$(PluginsPath)\shadcnui.dll</HintPath>
+        </Reference>
+        <Reference Include="MimicAPI">
+            <HintPath>$(PluginsPath)\MimicAPI.dll</HintPath>
         </Reference>
         <Reference Include="System.Collections.Immutable">
             <HintPath>$(GameAssemblyPath)\System.Collections.Immutable.dll</HintPath>
