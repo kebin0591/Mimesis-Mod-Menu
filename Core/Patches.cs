@@ -13,19 +13,14 @@ namespace Mimesis_Mod_Menu.Core
 {
     public static class Patches
     {
-        #region Configuration
-
         public static bool durabilityPatchEnabled = false;
         public static bool pricePatchEnabled = false;
         public static bool gaugePatchEnabled = false;
         public static bool forceBuyEnabled = false;
         public static bool forceRepairEnabled = false;
+        public static bool infiniteCurrencyEnabled = false;
 
         private static ConfigManager? configManager;
-
-        #endregion
-
-        #region Initialization
 
         public static void ApplyPatches(ConfigManager? config)
         {
@@ -44,10 +39,6 @@ namespace Mimesis_Mod_Menu.Core
             }
         }
 
-        #endregion
-
-        #region Configuration Management
-
         private static void LoadConfig()
         {
             if (configManager == null)
@@ -60,6 +51,7 @@ namespace Mimesis_Mod_Menu.Core
                 gaugePatchEnabled = configManager.GetBool("gaugePatchEnabled", false);
                 forceBuyEnabled = configManager.GetBool("forceBuyEnabled", false);
                 forceRepairEnabled = configManager.GetBool("forceRepairEnabled", false);
+                infiniteCurrencyEnabled = configManager.GetBool("infiniteCurrencyEnabled", false);
             }
             catch (Exception ex)
             {
@@ -79,7 +71,7 @@ namespace Mimesis_Mod_Menu.Core
                 configManager.SetBool("gaugePatchEnabled", gaugePatchEnabled);
                 configManager.SetBool("forceBuyEnabled", forceBuyEnabled);
                 configManager.SetBool("forceRepairEnabled", forceRepairEnabled);
-
+                configManager.SetBool("infiniteCurrencyEnabled", infiniteCurrencyEnabled);
                 configManager.SaveMainConfig();
             }
             catch (Exception ex)
@@ -90,12 +82,7 @@ namespace Mimesis_Mod_Menu.Core
 
         public static void SaveConfigAll() => SaveConfig();
 
-        #endregion
-
-        #region Reflection Utilities
-
         private static readonly BindingFlags AllFieldFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreCase;
-
         private static readonly string[] NumericFieldPatterns = new[] { "<{0}>k__BackingField", "{0}", "_{0}", "m_{0}" };
 
         public static void SetIntField(object instance, string fieldName, int value)
@@ -129,8 +116,6 @@ namespace Mimesis_Mod_Menu.Core
         {
             return type == typeof(int) || type == typeof(long) || type == typeof(short) || type == typeof(byte);
         }
-
-        #endregion
     }
 
     #region Item Patches
@@ -177,7 +162,7 @@ namespace Mimesis_Mod_Menu.Core
         }
     }
 
-    [HarmonyPatch(typeof(EquipmentItemElement), MethodType.Constructor, new[] { typeof(int), typeof(long), typeof(bool), typeof(int), typeof(int) })]
+    [HarmonyPatch(typeof(EquipmentItemElement), MethodType.Constructor, new[] { typeof(int), typeof(long), typeof(bool), typeof(int), typeof(int), typeof(int) })]
     internal static class EquipmentItemElementConstructorPatch
     {
         private static void Postfix(EquipmentItemElement __instance)
@@ -185,9 +170,13 @@ namespace Mimesis_Mod_Menu.Core
             try
             {
                 if (Patches.durabilityPatchEnabled)
-                    Patches.SetIntField(__instance, "RemainDurability", int.MaxValue);
+                {
+                    __instance.SetDurability(int.MaxValue);
+                }
                 if (Patches.gaugePatchEnabled)
-                    Patches.SetIntField(__instance, "RemainAmount", int.MaxValue);
+                {
+                    __instance.SetAmount(int.MaxValue);
+                }
             }
             catch (Exception ex)
             {
@@ -288,9 +277,7 @@ namespace Mimesis_Mod_Menu.Core
                 }
 
                 __instance.InventoryControlUnit.HandleAddItem(itemElement, out _, true, true);
-
                 __instance.SendToMe(new BuyItemRes(hashCode) { remainCurrency = maintenanceRoom.Currency });
-
                 __instance.SendInSight(new BuyItemSig { itemMasterID = itemMasterID, machineIndex = machineIndex }, false);
 
                 __result = MsgErrorCode.Success;
@@ -323,7 +310,6 @@ namespace Mimesis_Mod_Menu.Core
                 }
 
                 __instance.SendToMe(new RepairTramRes(hashCode) { errorCode = MsgErrorCode.Success });
-
                 __instance.SendToChannel(new StartRepairTramSig { remainCurrency = maintenanceRoom.Currency });
 
                 __result = MsgErrorCode.Success;
@@ -335,6 +321,81 @@ namespace Mimesis_Mod_Menu.Core
                 __result = MsgErrorCode.InvalidErrorCode;
                 return false;
             }
+        }
+    }
+
+    [HarmonyPatch]
+    internal static class MaintenanceRoomBuyItemCurrencyPatch
+    {
+        private static MethodBase TargetMethod()
+        {
+            return AccessTools.Method(typeof(MaintenanceRoom), "BuyItem", new Type[] { typeof(int), typeof(VCreature) });
+        }
+
+        private static void Postfix(MaintenanceRoom __instance, int itemMasterID, VCreature creature, ref MsgErrorCode __result)
+        {
+            if (!Patches.infiniteCurrencyEnabled)
+                return;
+
+            if (__result == MsgErrorCode.Success)
+            {
+                ReflectionHelper.InvokeMethod(__instance, "AddCurrency", int.MaxValue);
+            }
+        }
+    }
+
+    #endregion
+
+    #region Currency Patches
+
+    [HarmonyPatch]
+    internal static class GameMainBaseUpdateCurrencyPatch
+    {
+        private static MethodBase TargetMethod()
+        {
+            return AccessTools.Method(typeof(GameMainBase), "UpdateCurrency", new Type[] { typeof(int) });
+        }
+
+        private static void Prefix(GameMainBase __instance, ref int currentCurrency)
+        {
+            if (!Patches.infiniteCurrencyEnabled)
+                return;
+
+            currentCurrency = int.MaxValue;
+        }
+    }
+
+    [HarmonyPatch]
+    internal static class GameMainBaseOnCurrencyChangedPatch
+    {
+        private static MethodBase TargetMethod()
+        {
+            return AccessTools.Method(typeof(GameMainBase), "OnCurrencyChanged", new Type[] { typeof(int), typeof(int) });
+        }
+
+        private static void Prefix(GameMainBase __instance, ref int prev, ref int curr)
+        {
+            if (!Patches.infiniteCurrencyEnabled)
+                return;
+
+            curr = int.MaxValue;
+        }
+    }
+
+    [HarmonyPatch]
+    internal static class MaintenanceSceneOnCurrencyChangedPatch
+    {
+        private static MethodBase TargetMethod()
+        {
+            return AccessTools.Method(typeof(MaintenanceScene), "OnCurrencyChanged", new Type[] { typeof(int), typeof(int) });
+        }
+
+        private static void Prefix(MaintenanceScene __instance, ref int prev, ref int curr)
+        {
+            if (!Patches.infiniteCurrencyEnabled)
+                return;
+
+            curr = int.MaxValue;
         }
     }
 

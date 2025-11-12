@@ -508,6 +508,10 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper?.AddSpace(10);
 
                 DrawToggleWithSave("Force Repair", () => Patches.forceRepairEnabled, (v) => Patches.forceRepairEnabled = v, "");
+
+                guiHelper?.AddSpace(10);
+
+                DrawToggleWithSave("Infinite Currency", () => Patches.infiniteCurrencyEnabled, (v) => Patches.infiniteCurrencyEnabled = v, "");
             });
             guiHelper?.EndCard();
 
