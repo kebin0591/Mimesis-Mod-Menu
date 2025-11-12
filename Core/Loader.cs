@@ -1,11 +1,11 @@
 using MelonLoader;
-using MIMESIS;
+using Mimesis_Mod_Menu.Core;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(MIMESIS.Loader), "ModMenu", "1.4.0", "notfishvr")]
+[assembly: MelonInfo(typeof(Loader), "ModMenu", "2.0.0", "notfishvr")]
 [assembly: MelonGame("ReLUGames", "MIMESIS")]
 
-namespace MIMESIS
+namespace Mimesis_Mod_Menu.Core
 {
     public class Loader : MelonMod
     {
