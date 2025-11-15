@@ -18,22 +18,25 @@ namespace Mimesis_Mod_Menu.Core
 {
     public static class Patches
     {
-        public static bool durabilityPatchEnabled = false;
-        public static bool pricePatchEnabled = false;
-        public static bool gaugePatchEnabled = false;
-        public static bool forceBuyEnabled = false;
-        public static bool forceRepairEnabled = false;
-        public static bool infiniteCurrencyEnabled = false;
-
-        private static ConfigManager? configManager;
+        private static MainGUI.FeatureState featureState;
         private static string itemLogPath = "";
         private static HashSet<int> loggedItems = new HashSet<int>();
 
-        public static void ApplyPatches(ConfigManager? config)
+        public static MainGUI.FeatureState GetFeatureState()
+        {
+            if (featureState == null)
+            {
+                var mainGUI = UnityEngine.Object.FindObjectOfType<MainGUI>();
+                if (mainGUI != null)
+                    featureState = mainGUI.GetFeatureState();
+            }
+            return featureState;
+        }
+
+        public static void ApplyPatches(ConfigManager config)
         {
             try
             {
-                configManager = config;
                 itemLogPath = Path.Combine(Directory.GetCurrentDirectory(), "ItemMasterIDLog.txt");
 
                 if (!File.Exists(itemLogPath))
@@ -41,56 +44,17 @@ namespace Mimesis_Mod_Menu.Core
                     File.WriteAllText(itemLogPath, "ItemID,ItemName\n");
                 }
 
-                LoadConfig();
+                var mainGUI = UnityEngine.Object.FindObjectOfType<MainGUI>();
+                if (mainGUI != null)
+                    featureState = mainGUI.GetFeatureState();
+
                 HarmonyLib.Harmony harmony = new HarmonyLib.Harmony("com.Mimesis.modmenu");
                 harmony.PatchAll(typeof(Patches).Assembly);
                 MelonLogger.Msg("Harmony patches applied successfully");
-                SaveConfig();
             }
             catch (Exception ex)
             {
                 MelonLogger.Error($"Error applying patches: {ex.Message}");
-            }
-        }
-
-        private static void LoadConfig()
-        {
-            try
-            {
-                if (configManager == null)
-                    return;
-
-                durabilityPatchEnabled = configManager.GetBool("durabilityPatchEnabled", false);
-                pricePatchEnabled = configManager.GetBool("pricePatchEnabled", false);
-                gaugePatchEnabled = configManager.GetBool("gaugePatchEnabled", false);
-                forceBuyEnabled = configManager.GetBool("forceBuyEnabled", false);
-                forceRepairEnabled = configManager.GetBool("forceRepairEnabled", false);
-                infiniteCurrencyEnabled = configManager.GetBool("infiniteCurrencyEnabled", false);
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Error($"Error loading patch config: {ex.Message}");
-            }
-        }
-
-        public static void SaveConfig()
-        {
-            try
-            {
-                if (configManager == null)
-                    return;
-
-                configManager.SetBool("durabilityPatchEnabled", durabilityPatchEnabled);
-                configManager.SetBool("pricePatchEnabled", pricePatchEnabled);
-                configManager.SetBool("gaugePatchEnabled", gaugePatchEnabled);
-                configManager.SetBool("forceBuyEnabled", forceBuyEnabled);
-                configManager.SetBool("forceRepairEnabled", forceRepairEnabled);
-                configManager.SetBool("infiniteCurrencyEnabled", infiniteCurrencyEnabled);
-                configManager.SaveMainConfig();
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Error($"Error saving patch config: {ex.Message}");
             }
         }
 
@@ -239,11 +203,15 @@ namespace Mimesis_Mod_Menu.Core
         {
             try
             {
-                if (Patches.durabilityPatchEnabled)
+                var fs = Patches.GetFeatureState();
+                if (fs == null)
+                    return;
+
+                if (fs.Fullbright)
                     Patches.SetIntField(__instance, "durability", int.MaxValue);
-                if (Patches.pricePatchEnabled)
+                if (fs.Fullbright)
                     Patches.SetIntField(__instance, "price", int.MaxValue);
-                if (Patches.gaugePatchEnabled)
+                if (fs.Fullbright)
                     Patches.SetIntField(__instance, "remainGauge", int.MaxValue);
             }
             catch (Exception ex)
@@ -269,11 +237,15 @@ namespace Mimesis_Mod_Menu.Core
                     }
                 }
 
-                if (Patches.durabilityPatchEnabled)
+                var fs = Patches.GetFeatureState();
+                if (fs == null)
+                    return;
+
+                if (fs.Fullbright)
                     Patches.SetIntField(__instance, "Durability", int.MaxValue);
-                if (Patches.pricePatchEnabled)
+                if (fs.Fullbright)
                     Patches.SetIntField(__instance, "Price", int.MaxValue);
-                if (Patches.gaugePatchEnabled)
+                if (fs.Fullbright)
                     Patches.SetIntField(__instance, "RemainGauge", int.MaxValue);
             }
             catch (Exception ex)
@@ -299,11 +271,15 @@ namespace Mimesis_Mod_Menu.Core
                     }
                 }
 
-                if (Patches.durabilityPatchEnabled)
+                var fs = Patches.GetFeatureState();
+                if (fs == null)
+                    return;
+
+                if (fs.Fullbright)
                 {
                     __instance.SetDurability(int.MaxValue);
                 }
-                if (Patches.gaugePatchEnabled)
+                if (fs.Fullbright)
                 {
                     __instance.SetAmount(int.MaxValue);
                 }
@@ -326,7 +302,8 @@ namespace Mimesis_Mod_Menu.Core
         {
             try
             {
-                if (!MainGUI.godModeEnabled)
+                var fs = Patches.GetFeatureState();
+                if (fs == null || !fs.GodMode)
                     return true;
 
                 object victim = ReflectionHelper.GetFieldValue(args, "Victim");
@@ -354,7 +331,8 @@ namespace Mimesis_Mod_Menu.Core
         {
             try
             {
-                return !MainGUI.infiniteStaminaEnabled;
+                var fs = Patches.GetFeatureState();
+                return fs == null || !fs.InfiniteStamina;
             }
             catch (Exception ex)
             {
@@ -371,7 +349,8 @@ namespace Mimesis_Mod_Menu.Core
         {
             try
             {
-                if (!MainGUI.noFallDamageEnabled)
+                var fs = Patches.GetFeatureState();
+                if (fs == null || !fs.NoFallDamage)
                     return true;
 
                 __result = 0f;
@@ -392,8 +371,9 @@ namespace Mimesis_Mod_Menu.Core
         {
             try
             {
-                if (MainGUI.speedBoostEnabled)
-                    __result *= MainGUI.speedBoostMultiplier;
+                var fs = Patches.GetFeatureState();
+                if (fs != null && fs.SpeedBoost)
+                    __result *= fs.SpeedMultiplier;
             }
             catch (Exception ex)
             {
@@ -413,7 +393,8 @@ namespace Mimesis_Mod_Menu.Core
         {
             try
             {
-                if (!Patches.forceBuyEnabled)
+                var fs = Patches.GetFeatureState();
+                if (fs == null || !fs.Fullbright)
                     return true;
 
                 MaintenanceRoom maintenanceRoom = __instance.VRoom as MaintenanceRoom;
@@ -453,7 +434,8 @@ namespace Mimesis_Mod_Menu.Core
         {
             try
             {
-                if (!Patches.forceRepairEnabled)
+                var fs = Patches.GetFeatureState();
+                if (fs == null || !fs.Fullbright)
                     return true;
 
                 MaintenanceRoom maintenanceRoom = __instance.VRoom as MaintenanceRoom;
@@ -498,7 +480,8 @@ namespace Mimesis_Mod_Menu.Core
         {
             try
             {
-                if (!Patches.infiniteCurrencyEnabled)
+                var fs = Patches.GetFeatureState();
+                if (fs == null || !fs.Fullbright)
                     return;
 
                 if (__result == MsgErrorCode.Success)
@@ -537,7 +520,8 @@ namespace Mimesis_Mod_Menu.Core
         {
             try
             {
-                if (!Patches.infiniteCurrencyEnabled)
+                var fs = Patches.GetFeatureState();
+                if (fs == null || !fs.Fullbright)
                     return;
 
                 currentCurrency = int.MaxValue;
@@ -569,7 +553,8 @@ namespace Mimesis_Mod_Menu.Core
         {
             try
             {
-                if (!Patches.infiniteCurrencyEnabled)
+                var fs = Patches.GetFeatureState();
+                if (fs == null || !fs.Fullbright)
                     return;
 
                 curr = int.MaxValue;
@@ -601,7 +586,8 @@ namespace Mimesis_Mod_Menu.Core
         {
             try
             {
-                if (!Patches.infiniteCurrencyEnabled)
+                var fs = Patches.GetFeatureState();
+                if (fs == null || !fs.Fullbright)
                     return;
 
                 curr = int.MaxValue;

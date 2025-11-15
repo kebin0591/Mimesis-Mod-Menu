@@ -19,6 +19,9 @@ namespace Mimesis_Mod_Menu.Core.Features
         private const float ESP_TEXT_SIZE = 11f;
         private static bool isInitialized = false;
 
+        private static MainGUI mainGUI;
+        private static MainGUI.FeatureState espState;
+
         private static readonly Dictionary<ActorType, string> ActorTypeLabels = new Dictionary<ActorType, string>
         {
             { ActorType.Player, "[PLAYER]" },
@@ -54,6 +57,10 @@ namespace Mimesis_Mod_Menu.Core.Features
                 if (cachedLineTexture != null)
                     cachedLineTexture.filterMode = FilterMode.Point;
 
+                mainGUI = UnityEngine.Object.FindObjectOfType<MainGUI>();
+                if (mainGUI != null)
+                    espState = mainGUI.GetFeatureState();
+
                 isInitialized = true;
             }
             catch (Exception ex)
@@ -66,7 +73,7 @@ namespace Mimesis_Mod_Menu.Core.Features
         {
             try
             {
-                if (!MainGUI.espEnabled || !isInitialized)
+                if (espState == null || !espState.ESP || !isInitialized)
                     return;
 
                 mainCamera = Camera.main;
@@ -90,6 +97,44 @@ namespace Mimesis_Mod_Menu.Core.Features
             }
         }
 
+        private static bool IsESPEnabled()
+        {
+            if (espState == null)
+                return false;
+            return espState.ESP;
+        }
+
+        private static float GetESPDistance()
+        {
+            if (espState == null)
+                return 150f;
+            return espState.ESPDistance;
+        }
+
+        private static bool IsLootVisible()
+        {
+            if (espState == null)
+                return false;
+            return espState.ESPShowLoot;
+        }
+
+        private static bool ShouldShowActorType(ActorType type)
+        {
+            if (espState == null)
+                return false;
+            return type switch
+            {
+                ActorType.Player => espState.ESPShowPlayers,
+                ActorType.Monster => espState.ESPShowMonsters,
+                ActorType.Interactor => espState.ESPShowInteractors,
+                ActorType.NPC => espState.ESPShowNPCs,
+                ActorType.FieldSkill => espState.ESPShowFieldSkills,
+                ActorType.Projectile => espState.ESPShowProjectiles,
+                ActorType.AuraSkill => espState.ESPShowAuraSkills,
+                _ => false,
+            };
+        }
+
         private static void UpdateActorCache()
         {
             try
@@ -101,6 +146,7 @@ namespace Mimesis_Mod_Menu.Core.Features
                     return;
 
                 Vector3 camPos = mainCamera.transform.position;
+                float espDist = GetESPDistance();
 
                 foreach (ProtoActor actor in allActors)
                 {
@@ -111,7 +157,7 @@ namespace Mimesis_Mod_Menu.Core.Features
                         continue;
 
                     float distance = Vector3.Distance(camPos, actor.transform.position);
-                    if (distance <= MainGUI.espDistance)
+                    if (distance <= espDist)
                         cachedActors.Add(actor);
                 }
             }
@@ -127,7 +173,7 @@ namespace Mimesis_Mod_Menu.Core.Features
             {
                 cachedLootObjects.Clear();
 
-                if (!MainGUI.espShowLoot)
+                if (!IsLootVisible())
                     return;
 
                 LootingLevelObject[] allLoot = UnityEngine.Object.FindObjectsOfType<LootingLevelObject>();
@@ -135,6 +181,7 @@ namespace Mimesis_Mod_Menu.Core.Features
                     return;
 
                 Vector3 camPos = mainCamera.transform.position;
+                float espDist = GetESPDistance();
 
                 foreach (LootingLevelObject loot in allLoot)
                 {
@@ -142,7 +189,7 @@ namespace Mimesis_Mod_Menu.Core.Features
                         continue;
 
                     float distance = Vector3.Distance(camPos, loot.transform.position);
-                    if (distance <= MainGUI.espDistance)
+                    if (distance <= espDist)
                         cachedLootObjects.Add(loot);
                 }
             }
@@ -161,7 +208,7 @@ namespace Mimesis_Mod_Menu.Core.Features
                     if (actor == null || !actor.gameObject.activeInHierarchy)
                         continue;
 
-                    if (!ShouldDisplayActorType(actor.ActorType))
+                    if (!ShouldShowActorType(actor.ActorType))
                         continue;
 
                     Vector3 screenPos = mainCamera.WorldToScreenPoint(actor.transform.position);
@@ -209,29 +256,6 @@ namespace Mimesis_Mod_Menu.Core.Features
             catch (Exception ex)
             {
                 MelonLoader.MelonLogger.Error($"ESPManager.DrawLootESP error: {ex.Message}");
-            }
-        }
-
-        private static bool ShouldDisplayActorType(ActorType type)
-        {
-            try
-            {
-                return type switch
-                {
-                    ActorType.Player => MainGUI.espShowPlayers,
-                    ActorType.Monster => MainGUI.espShowMonsters,
-                    ActorType.Interactor => MainGUI.espShowInteractors,
-                    ActorType.NPC => MainGUI.espShowNPCs,
-                    ActorType.FieldSkill => MainGUI.espShowFieldSkills,
-                    ActorType.Projectile => MainGUI.espShowProjectiles,
-                    ActorType.AuraSkill => MainGUI.espShowAuraSkills,
-                    _ => false,
-                };
-            }
-            catch (Exception ex)
-            {
-                MelonLoader.MelonLogger.Error($"ESPManager.ShouldDisplayActorType error: {ex.Message}");
-                return false;
             }
         }
 
@@ -292,6 +316,7 @@ namespace Mimesis_Mod_Menu.Core.Features
                     cachedLineTexture = null;
                 }
 
+                mainGUI = null;
                 isInitialized = false;
             }
             catch (Exception ex)

@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using MelonLoader;
-using MelonLoader.Utils;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -11,182 +9,158 @@ namespace Mimesis_Mod_Menu.Core.Config
 {
     public class ConfigManager
     {
-        private static readonly string ConfigDirectory = Path.Combine(MelonEnvironment.UserDataDirectory, "Mimesis");
-        private static readonly string MainConfigPath = Path.Combine(ConfigDirectory, "config.cfg");
-        private static readonly string HotkeysConfigPath = Path.Combine(ConfigDirectory, "hotkeys.cfg");
+        private const string MAIN_CATEGORY = "Mod Menu";
+        private const string HOTKEYS_CATEGORY = "Mod Menu Hotkeys";
 
-        private Dictionary<string, string> mainConfig = new Dictionary<string, string>();
-        private Dictionary<string, HotkeyConfig> hotkeyConfig = new Dictionary<string, HotkeyConfig>();
+        private MelonPreferences_Category mainCategory;
+        private MelonPreferences_Category hotkeysCategory;
+
+        private Dictionary<string, MelonPreferences_Entry<string>> stringEntries = new Dictionary<string, MelonPreferences_Entry<string>>();
+        private Dictionary<string, MelonPreferences_Entry<bool>> boolEntries = new Dictionary<string, MelonPreferences_Entry<bool>>();
+        private Dictionary<string, MelonPreferences_Entry<float>> floatEntries = new Dictionary<string, MelonPreferences_Entry<float>>();
+        private Dictionary<string, MelonPreferences_Entry<string>> hotkeyEntries = new Dictionary<string, MelonPreferences_Entry<string>>();
 
         public ConfigManager()
         {
-            EnsureDirectoryExists();
-            LoadAllConfigs();
-        }
-
-        private void EnsureDirectoryExists()
-        {
-            if (!Directory.Exists(ConfigDirectory))
-                Directory.CreateDirectory(ConfigDirectory);
+            mainCategory = MelonPreferences.CreateCategory(MAIN_CATEGORY, "Mod Menu Configuration");
+            hotkeysCategory = MelonPreferences.CreateCategory(HOTKEYS_CATEGORY, "Mod Menu Hotkey Configuration");
+            InitializeDefaultHotkeys();
         }
 
         public void LoadAllConfigs()
         {
-            LoadMainConfig();
-            LoadHotkeysConfig();
-        }
-
-        private void LoadMainConfig()
-        {
-            mainConfig.Clear();
-            if (!File.Exists(MainConfigPath))
-            {
-                MelonLogger.Msg("No main config found, creating defaults");
-                SaveMainConfig();
-                return;
-            }
-
-            try
-            {
-                foreach (string line in File.ReadAllLines(MainConfigPath))
-                {
-                    if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
-                        continue;
-
-                    string[] parts = line.Split(new[] { '=' }, 2);
-                    if (parts.Length == 2)
-                        mainConfig[parts[0].Trim()] = parts[1].Trim();
-                }
-
-                MelonLogger.Msg("Loaded main configuration");
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Error($"Error loading main config: {ex.Message}");
-            }
-        }
-
-        private void LoadHotkeysConfig()
-        {
-            hotkeyConfig.Clear();
-            if (!File.Exists(HotkeysConfigPath))
-            {
-                InitializeDefaultHotkeys();
-                SaveHotkeysConfig();
-                return;
-            }
-
-            try
-            {
-                foreach (string line in File.ReadAllLines(HotkeysConfigPath))
-                {
-                    if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
-                        continue;
-
-                    string[] parts = line.Split(new[] { '=' }, 2);
-                    if (parts.Length == 2)
-                    {
-                        string key = parts[0].Trim();
-                        hotkeyConfig[key] = HotkeyConfig.Parse(parts[1].Trim());
-                    }
-                }
-
-                MelonLogger.Msg("Loaded hotkey configuration");
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Error($"Error loading hotkeys config: {ex.Message}");
-            }
+            InitializeDefaultHotkeys();
         }
 
         private void InitializeDefaultHotkeys()
         {
-            hotkeyConfig["ToggleMenu"] = new HotkeyConfig(KeyCode.Insert);
-            hotkeyConfig["ToggleGodMode"] = new HotkeyConfig(KeyCode.G, ctrl: true);
-            hotkeyConfig["ToggleInfiniteStamina"] = new HotkeyConfig(KeyCode.S, ctrl: true);
-            hotkeyConfig["ToggleNoFallDamage"] = new HotkeyConfig(KeyCode.F, ctrl: true);
-            hotkeyConfig["ToggleSpeedBoost"] = new HotkeyConfig(KeyCode.D, ctrl: true);
-            hotkeyConfig["ToggleESP"] = new HotkeyConfig(KeyCode.E, ctrl: true);
-            hotkeyConfig["ToggleAutoLoot"] = new HotkeyConfig(KeyCode.L, ctrl: true);
-            hotkeyConfig["ToggleFullbright"] = new HotkeyConfig(KeyCode.B, ctrl: true);
-        }
-
-        public void SaveMainConfig()
-        {
-            try
+            var defaults = new Dictionary<string, HotkeyConfig>
             {
-                List<string> lines = new List<string> { "# Mimesis Main Configuration", "# Auto-generated, do not edit manually unless you know what you're doing", "" };
+                { "ToggleMenu", new HotkeyConfig(KeyCode.Insert) },
+                { "ToggleGodMode", new HotkeyConfig(KeyCode.G, ctrl: true) },
+                { "ToggleInfiniteStamina", new HotkeyConfig(KeyCode.S, ctrl: true) },
+                { "ToggleNoFallDamage", new HotkeyConfig(KeyCode.F, ctrl: true) },
+                { "ToggleSpeedBoost", new HotkeyConfig(KeyCode.D, ctrl: true) },
+                { "ToggleESP", new HotkeyConfig(KeyCode.E, ctrl: true) },
+                { "ToggleAutoLoot", new HotkeyConfig(KeyCode.L, ctrl: true) },
+                { "ToggleFullbright", new HotkeyConfig(KeyCode.B, ctrl: true) },
+            };
 
-                foreach (var kvp in mainConfig.OrderBy(x => x.Key))
-                    lines.Add($"{kvp.Key}={kvp.Value}");
-
-                File.WriteAllLines(MainConfigPath, lines);
-            }
-            catch (Exception ex)
+            foreach (var kvp in defaults)
             {
-                MelonLogger.Error($"Error saving main config: {ex.Message}");
+                if (!hotkeyEntries.ContainsKey(kvp.Key))
+                    SetHotkey(kvp.Key, kvp.Value);
             }
-        }
 
-        public void SaveHotkeysConfig()
-        {
-            try
-            {
-                List<string> lines = new List<string> { "# Mimesis Hotkey Configuration", "# Format: Feature=Ctrl+Shift+Alt+Key", "# Remove modifiers as needed (e.g., just 'F' for F key)", "" };
-
-                foreach (var kvp in hotkeyConfig.OrderBy(x => x.Key))
-                    lines.Add($"{kvp.Key}={kvp.Value}");
-
-                File.WriteAllLines(HotkeysConfigPath, lines);
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Error($"Error saving hotkeys config: {ex.Message}");
-            }
+            MelonPreferences.Save();
         }
 
         public string GetString(string key, string defaultValue = "")
         {
-            return mainConfig.TryGetValue(key, out var value) ? value : defaultValue;
+            return GetOrCreate(stringEntries, key, defaultValue, () => mainCategory.CreateEntry(key, defaultValue, key, ""));
         }
 
         public bool GetBool(string key, bool defaultValue = false)
         {
-            if (mainConfig.TryGetValue(key, out var value))
-                return value.Equals("true", StringComparison.OrdinalIgnoreCase);
-            return defaultValue;
+            return GetOrCreate(boolEntries, key, defaultValue, () => mainCategory.CreateEntry(key, defaultValue, key, ""));
         }
 
         public float GetFloat(string key, float defaultValue = 0f)
         {
-            if (mainConfig.TryGetValue(key, out var value) && float.TryParse(value, out var result))
-                return result;
-            return defaultValue;
+            return GetOrCreate(floatEntries, key, defaultValue, () => mainCategory.CreateEntry(key, defaultValue, key, ""));
+        }
+
+        private T GetOrCreate<T>(Dictionary<string, MelonPreferences_Entry<T>> dict, string key, T defaultValue, Func<MelonPreferences_Entry<T>> factory)
+        {
+            try
+            {
+                if (!dict.TryGetValue(key, out var entry))
+                {
+                    entry = factory();
+                    dict[key] = entry;
+                }
+                return entry.Value;
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"Error getting {typeof(T).Name} {key}: {ex.Message}");
+                return defaultValue;
+            }
         }
 
         public void SetString(string key, string value)
         {
-            mainConfig[key] = value;
+            SetValue(stringEntries, key, value, () => mainCategory.CreateEntry(key, value, key, ""));
         }
 
         public void SetBool(string key, bool value)
         {
-            mainConfig[key] = value.ToString().ToLower();
+            SetValue(boolEntries, key, value, () => mainCategory.CreateEntry(key, value, key, ""));
         }
 
         public void SetFloat(string key, float value)
         {
-            mainConfig[key] = value.ToString();
+            SetValue(floatEntries, key, value, () => mainCategory.CreateEntry(key, value, key, ""));
+        }
+
+        private void SetValue<T>(Dictionary<string, MelonPreferences_Entry<T>> dict, string key, T value, Func<MelonPreferences_Entry<T>> factory)
+        {
+            try
+            {
+                if (!dict.TryGetValue(key, out var entry))
+                {
+                    entry = factory();
+                    dict[key] = entry;
+                }
+                else
+                {
+                    entry.Value = value;
+                }
+                MelonPreferences.Save();
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Error($"Error setting {typeof(T).Name} {key}: {ex.Message}");
+            }
         }
 
         public HotkeyConfig GetHotkey(string feature)
         {
-            return hotkeyConfig.TryGetValue(feature, out var hotkey) ? hotkey : new HotkeyConfig();
+            try
+            {
+                if (!hotkeyEntries.TryGetValue(feature, out var entry))
+                {
+                    entry = hotkeysCategory.CreateEntry(feature, "None", feature, "");
+                    hotkeyEntries[feature] = entry;
+                }
+                return HotkeyConfig.Parse(entry.Value);
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"Error getting hotkey {feature}: {ex.Message}");
+                return new HotkeyConfig();
+            }
         }
 
         public void SetHotkey(string feature, HotkeyConfig hotkey)
         {
-            hotkeyConfig[feature] = hotkey;
+            try
+            {
+                if (!hotkeyEntries.TryGetValue(feature, out var entry))
+                {
+                    entry = hotkeysCategory.CreateEntry(feature, hotkey.ToString(), feature, "");
+                    hotkeyEntries[feature] = entry;
+                }
+                else
+                {
+                    entry.Value = hotkey.ToString();
+                }
+                MelonPreferences.Save();
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Error($"Error setting hotkey {feature}: {ex.Message}");
+            }
         }
 
         public bool IsHotkeyPressed(string feature)
@@ -196,7 +170,23 @@ namespace Mimesis_Mod_Menu.Core.Config
 
         public Dictionary<string, HotkeyConfig> GetAllHotkeys()
         {
-            return new Dictionary<string, HotkeyConfig>(hotkeyConfig);
+            var result = new Dictionary<string, HotkeyConfig>();
+            try
+            {
+                foreach (var entry in hotkeysCategory.Entries)
+                {
+                    if (entry is MelonPreferences_Entry<string> stringEntry)
+                    {
+                        result[entry.Identifier] = HotkeyConfig.Parse(stringEntry.Value);
+                        hotkeyEntries[entry.Identifier] = stringEntry;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"Error getting all hotkeys: {ex.Message}");
+            }
+            return result;
         }
     }
 }

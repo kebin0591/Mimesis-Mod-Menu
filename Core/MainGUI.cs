@@ -16,67 +16,61 @@ namespace Mimesis_Mod_Menu.Core
 {
     public class MainGUI : MonoBehaviour
     {
-        #region Fields
-
-        private GUIHelper? guiHelper;
+        private GUIHelper guiHelper;
+        private ConfigManager configManager;
         private Rect windowRect = new Rect(20, 20, 1000, 800);
-        private bool showDemoWindow = true;
         private Vector2 scrollPosition;
         private int currentDemoTab;
-        private Tabs.TabConfig[]? demoTabs;
-        private float lastConfigSaveTime;
-        private ConfigManager? configManager;
+        private Tabs.TabConfig[] demoTabs;
 
-        private PickupManager? pickupManager;
-        private MovementManager? movementManager;
+        private PickupManager pickupManager;
+        private MovementManager movementManager;
+        private AutoLootManager autoLootManager;
+        private FullbrightManager fullbrightManager;
+        private ItemSpawnerManager itemSpawnerManager;
 
-        private AutoLootManager? autoLootManager;
-        private FullbrightManager? fullbrightManager;
-        private ItemSpawnerManager? itemSpawnerManager;
-
-        private ProtoActor? selectedPlayer;
-
-        public static bool godModeEnabled = false;
-        public static bool infiniteStaminaEnabled = false;
-        public static bool noFallDamageEnabled = false;
-
-        public static bool speedBoostEnabled = false;
-        public static float speedBoostMultiplier = 2f;
-
-        public static bool espEnabled = false;
-        public static bool espShowLoot = false;
-        public static bool espShowPlayers = true;
-        public static bool espShowMonsters = true;
-        public static bool espShowInteractors = false;
-        public static bool espShowNPCs = false;
-        public static bool espShowFieldSkills = false;
-        public static bool espShowProjectiles = false;
-        public static bool espShowAuraSkills = false;
-        public static Color espColor = Color.yellow;
-        public static float espDistance = 150f;
-
-        public static bool autoLootEnabled = false;
-        public static float autoLootDistance = 50f;
-
-        public static bool fullbright = false;
-
-        private ProtoActor[]? cachedPlayers;
+        private ProtoActor selectedPlayer;
+        private ProtoActor[] cachedPlayers;
         private float lastPlayerCacheTime;
-        private const float PLAYER_CACHE_INTERVAL = 5f;
 
         private string editingHotkey = "";
         private bool isListeningForHotkey = false;
         private KeyCode pendingKey = KeyCode.None;
-        private bool pendingShift = false;
-        private bool pendingCtrl = false;
-        private bool pendingAlt = false;
-
+        private bool pendingShift,
+            pendingCtrl,
+            pendingAlt;
         private string itemSpawnIDInput = "1001";
         private string itemSpawnQuantityInput = "1";
 
-        #endregion
+        private bool showDemoWindow = true;
+        private float lastMenuToggleTime;
 
-        #region Core
+        private const float PLAYER_CACHE_INTERVAL = 5f;
+        private const float HOTKEY_COOLDOWN = 0.5f;
+
+        public class FeatureState
+        {
+            public bool GodMode = false;
+            public bool InfiniteStamina = false;
+            public bool NoFallDamage = false;
+            public bool SpeedBoost = false;
+            public float SpeedMultiplier = 2f;
+            public bool ESP = false;
+            public float ESPDistance = 150f;
+            public bool ESPShowLoot = false;
+            public bool ESPShowPlayers = false;
+            public bool ESPShowMonsters = false;
+            public bool ESPShowInteractors = false;
+            public bool ESPShowNPCs = false;
+            public bool ESPShowFieldSkills = false;
+            public bool ESPShowProjectiles = false;
+            public bool ESPShowAuraSkills = false;
+            public bool AutoLoot = false;
+            public float AutoLootDistance = 50f;
+            public bool Fullbright = false;
+        }
+
+        private FeatureState state = new FeatureState();
 
         void Start()
         {
@@ -85,24 +79,7 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper = new GUIHelper();
                 configManager = new ConfigManager();
 
-                godModeEnabled = configManager.GetBool("godModeEnabled", false);
-                infiniteStaminaEnabled = configManager.GetBool("infiniteStaminaEnabled", false);
-                noFallDamageEnabled = configManager.GetBool("noFallDamageEnabled", false);
-                speedBoostEnabled = configManager.GetBool("speedBoostEnabled", false);
-                speedBoostMultiplier = configManager.GetFloat("speedBoostMultiplier", 2f);
-                espEnabled = configManager.GetBool("espEnabled", false);
-                espShowLoot = configManager.GetBool("espShowLoot", false);
-                espShowPlayers = configManager.GetBool("espShowPlayers", true);
-                espShowMonsters = configManager.GetBool("espShowMonsters", true);
-                espShowInteractors = configManager.GetBool("espShowInteractors", false);
-                espShowNPCs = configManager.GetBool("espShowNPCs", false);
-                espShowFieldSkills = configManager.GetBool("espShowFieldSkills", false);
-                espShowProjectiles = configManager.GetBool("espShowProjectiles", false);
-                espShowAuraSkills = configManager.GetBool("espShowAuraSkills", false);
-                espDistance = configManager.GetFloat("espDistance", 150f);
-                autoLootEnabled = configManager.GetBool("autoLootEnabled", false);
-                autoLootDistance = configManager.GetFloat("autoLootDistance", 50f);
-                fullbright = configManager.GetBool("fullbright", false);
+                LoadAllSettings();
 
                 demoTabs = new Tabs.TabConfig[]
                 {
@@ -131,8 +108,37 @@ namespace Mimesis_Mod_Menu.Core
             }
         }
 
-        private float lastMenuToggleTime = 0f;
-        private const float HOTKEY_COOLDOWN = 0.5f;
+        private void LoadAllSettings()
+        {
+            state.GodMode = configManager.GetBool("godMode", false);
+            state.InfiniteStamina = configManager.GetBool("infiniteStamina", false);
+            state.NoFallDamage = configManager.GetBool("noFallDamage", false);
+            state.SpeedBoost = configManager.GetBool("speedBoost", false);
+            state.SpeedMultiplier = configManager.GetFloat("speedMultiplier", 2f);
+            state.ESP = configManager.GetBool("espEnabled", false);
+            state.ESPShowLoot = configManager.GetBool("espShowLoot", false);
+            state.ESPShowPlayers = configManager.GetBool("espShowPlayers", true);
+            state.ESPShowMonsters = configManager.GetBool("espShowMonsters", true);
+            state.ESPShowInteractors = configManager.GetBool("espShowInteractors", false);
+            state.ESPShowNPCs = configManager.GetBool("espShowNPCs", false);
+            state.ESPShowFieldSkills = configManager.GetBool("espShowFieldSkills", false);
+            state.ESPShowProjectiles = configManager.GetBool("espShowProjectiles", false);
+            state.ESPShowAuraSkills = configManager.GetBool("espShowAuraSkills", false);
+            state.ESPDistance = configManager.GetFloat("espDistance", 150f);
+            state.AutoLoot = configManager.GetBool("autoLoot", false);
+            state.AutoLootDistance = configManager.GetFloat("autoLootDistance", 50f);
+            state.Fullbright = configManager.GetBool("fullbright", false);
+        }
+
+        private void SaveSetting(string key, object value)
+        {
+            if (value is bool b)
+                configManager.SetBool(key, b);
+            else if (value is float f)
+                configManager.SetFloat(key, f);
+            else if (value is string s)
+                configManager.SetString(key, s);
+        }
 
         void Update()
         {
@@ -154,68 +160,42 @@ namespace Mimesis_Mod_Menu.Core
                     return;
                 }
 
-                var toggleMenuHotkey = configManager.GetHotkey("ToggleMenu");
-                if (toggleMenuHotkey.Key != KeyCode.None)
+                if (configManager.GetHotkey("ToggleMenu").IsPressed())
                 {
-                    if (toggleMenuHotkey.IsPressed())
+                    if (Time.time - lastMenuToggleTime > HOTKEY_COOLDOWN)
                     {
-                        if (Time.time - lastMenuToggleTime > HOTKEY_COOLDOWN)
-                        {
-                            showDemoWindow = !showDemoWindow;
-                            lastMenuToggleTime = Time.time;
-                        }
+                        showDemoWindow = !showDemoWindow;
+                        lastMenuToggleTime = Time.time;
                     }
                 }
 
                 if (configManager.GetHotkey("ToggleGodMode").IsPressed())
-                {
-                    godModeEnabled = !godModeEnabled;
-                    configManager.SetBool("godModeEnabled", godModeEnabled);
-                    SaveConfigDebounced();
-                }
+                    ToggleBool("godMode", x => state.GodMode = x, () => state.GodMode);
 
                 if (configManager.GetHotkey("ToggleInfiniteStamina").IsPressed())
-                {
-                    infiniteStaminaEnabled = !infiniteStaminaEnabled;
-                    configManager.SetBool("infiniteStaminaEnabled", infiniteStaminaEnabled);
-                    SaveConfigDebounced();
-                }
+                    ToggleBool("infiniteStamina", x => state.InfiniteStamina = x, () => state.InfiniteStamina);
 
                 if (configManager.GetHotkey("ToggleNoFallDamage").IsPressed())
-                {
-                    noFallDamageEnabled = !noFallDamageEnabled;
-                    configManager.SetBool("noFallDamageEnabled", noFallDamageEnabled);
-                    SaveConfigDebounced();
-                }
+                    ToggleBool("noFallDamage", x => state.NoFallDamage = x, () => state.NoFallDamage);
 
                 if (configManager.GetHotkey("ToggleSpeedBoost").IsPressed())
-                {
-                    speedBoostEnabled = !speedBoostEnabled;
-                    configManager.SetBool("speedBoostEnabled", speedBoostEnabled);
-                    SaveConfigDebounced();
-                }
+                    ToggleBool("speedBoost", x => state.SpeedBoost = x, () => state.SpeedBoost);
 
                 if (configManager.GetHotkey("ToggleESP").IsPressed())
-                {
-                    espEnabled = !espEnabled;
-                    configManager.SetBool("espEnabled", espEnabled);
-                    SaveConfigDebounced();
-                }
+                    ToggleBool("espEnabled", x => state.ESP = x, () => state.ESP);
 
                 if (configManager.GetHotkey("ToggleAutoLoot").IsPressed())
                 {
-                    autoLootEnabled = !autoLootEnabled;
-                    autoLootManager?.SetEnabled(autoLootEnabled);
-                    configManager.SetBool("autoLootEnabled", autoLootEnabled);
-                    SaveConfigDebounced();
+                    state.AutoLoot = !state.AutoLoot;
+                    autoLootManager?.SetEnabled(state.AutoLoot);
+                    SaveSetting("autoLoot", state.AutoLoot);
                 }
 
                 if (configManager.GetHotkey("ToggleFullbright").IsPressed())
                 {
-                    fullbright = !fullbright;
-                    fullbrightManager?.SetEnabled(fullbright);
-                    configManager.SetBool("fullbright", fullbright);
-                    SaveConfigDebounced();
+                    state.Fullbright = !state.Fullbright;
+                    fullbrightManager?.SetEnabled(state.Fullbright);
+                    SaveSetting("fullbright", state.Fullbright);
                 }
 
                 autoLootManager?.Update();
@@ -230,24 +210,25 @@ namespace Mimesis_Mod_Menu.Core
             }
         }
 
+        private void ToggleBool(string key, Action<bool> setter, Func<bool> getter)
+        {
+            bool newVal = !getter();
+            setter(newVal);
+            SaveSetting(key, newVal);
+        }
+
         private void DetectHotkeyInput()
         {
             try
             {
                 var keyboard = Keyboard.current;
-                if (keyboard == null)
-                {
-                    return;
-                }
-
-                if (keyboard.escapeKey != null && keyboard.escapeKey.wasPressedThisFrame)
+                if (keyboard?.escapeKey?.wasPressedThisFrame == true)
                 {
                     isListeningForHotkey = false;
                     return;
                 }
 
                 KeyCode[] allKeys = (KeyCode[])System.Enum.GetValues(typeof(KeyCode));
-
                 foreach (KeyCode key in allKeys)
                 {
                     if (key == KeyCode.None || key == KeyCode.Escape)
@@ -255,15 +236,13 @@ namespace Mimesis_Mod_Menu.Core
 
                     try
                     {
-                        string keyName = key.ToString();
-                        var targetKey = keyboard.FindKeyOnCurrentKeyboardLayout(keyName);
-
-                        if (targetKey != null && targetKey.wasPressedThisFrame)
+                        var targetKey = keyboard.FindKeyOnCurrentKeyboardLayout(key.ToString());
+                        if (targetKey?.wasPressedThisFrame == true)
                         {
                             pendingKey = key;
-                            pendingShift = (keyboard.leftShiftKey != null && keyboard.leftShiftKey.isPressed) || (keyboard.rightShiftKey != null && keyboard.rightShiftKey.isPressed);
-                            pendingCtrl = (keyboard.leftCtrlKey != null && keyboard.leftCtrlKey.isPressed) || (keyboard.rightCtrlKey != null && keyboard.rightCtrlKey.isPressed);
-                            pendingAlt = (keyboard.leftAltKey != null && keyboard.leftAltKey.isPressed) || (keyboard.rightAltKey != null && keyboard.rightAltKey.isPressed);
+                            pendingShift = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
+                            pendingCtrl = keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;
+                            pendingAlt = keyboard.leftAltKey.isPressed || keyboard.rightAltKey.isPressed;
                             isListeningForHotkey = false;
                             return;
                         }
@@ -304,7 +283,6 @@ namespace Mimesis_Mod_Menu.Core
         {
             try
             {
-                SaveConfig();
                 fullbrightManager?.Cleanup();
                 ESPManager.Cleanup();
                 pickupManager?.Stop();
@@ -315,9 +293,10 @@ namespace Mimesis_Mod_Menu.Core
             }
         }
 
-        #endregion
-
-        #region Window Tabs
+        public FeatureState GetFeatureState()
+        {
+            return state;
+        }
 
         void DrawDemoWindow(int windowID)
         {
@@ -360,10 +339,6 @@ namespace Mimesis_Mod_Menu.Core
             }
         }
 
-        #endregion
-
-        #region Tab Player
-
         void DrawPlayerTab()
         {
             try
@@ -374,36 +349,11 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper?.CardTitle("Defense");
                 guiHelper?.CardContent(() =>
                 {
-                    bool godModeEnabled = MainGUI.godModeEnabled;
-                    bool newGodMode = guiHelper?.Switch("God Mode", godModeEnabled) ?? false;
-                    if (newGodMode != godModeEnabled)
-                    {
-                        MainGUI.godModeEnabled = newGodMode;
-                        configManager?.SetBool("godModeEnabled", newGodMode);
-                        SaveConfigDebounced();
-                    }
-
+                    DrawBoolSwitch("God Mode", x => state.GodMode = x, () => state.GodMode, "godMode");
                     guiHelper?.AddSpace(8);
-
-                    bool noFallEnabled = noFallDamageEnabled;
-                    bool newNoFall = guiHelper?.Switch("No Fall Damage", noFallEnabled) ?? false;
-                    if (newNoFall != noFallEnabled)
-                    {
-                        noFallDamageEnabled = newNoFall;
-                        configManager?.SetBool("noFallDamageEnabled", newNoFall);
-                        SaveConfigDebounced();
-                    }
-
+                    DrawBoolSwitch("No Fall Damage", x => state.NoFallDamage = x, () => state.NoFallDamage, "noFallDamage");
                     guiHelper?.AddSpace(8);
-
-                    bool staminaEnabled = infiniteStaminaEnabled;
-                    bool newStamina = guiHelper?.Switch("Infinite Stamina", staminaEnabled) ?? false;
-                    if (newStamina != staminaEnabled)
-                    {
-                        infiniteStaminaEnabled = newStamina;
-                        configManager?.SetBool("infiniteStaminaEnabled", newStamina);
-                        SaveConfigDebounced();
-                    }
+                    DrawBoolSwitch("Infinite Stamina", x => state.InfiniteStamina = x, () => state.InfiniteStamina, "infiniteStamina");
                 });
                 guiHelper?.EndCard();
 
@@ -413,33 +363,21 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper?.CardTitle("Movement");
                 guiHelper?.CardContent(() =>
                 {
-                    bool speedEnabled = speedBoostEnabled;
-                    bool newSpeedEnabled = guiHelper?.Switch("Speed Boost", speedEnabled) ?? false;
-                    if (newSpeedEnabled != speedEnabled)
-                    {
-                        speedBoostEnabled = newSpeedEnabled;
-                        configManager?.SetBool("speedBoostEnabled", newSpeedEnabled);
-                        SaveConfigDebounced();
-                    }
+                    DrawBoolSwitch("Speed Boost", x => state.SpeedBoost = x, () => state.SpeedBoost, "speedBoost");
 
-                    if (speedBoostEnabled)
+                    if (state.SpeedBoost)
                     {
                         guiHelper?.AddSpace(8);
-                        DrawLabeledSlider("Multiplier", ref speedBoostMultiplier, 1f, 5f, "x");
-                        configManager?.SetFloat("speedBoostMultiplier", speedBoostMultiplier);
-                        guiHelper?.MutedLabel($"Current: {speedBoostMultiplier:F2}x");
+                        DrawFloatSlider("Multiplier", x => state.SpeedMultiplier = x, () => state.SpeedMultiplier, 1f, 5f, "x", "speedMultiplier");
+                        guiHelper?.MutedLabel($"Current: {state.SpeedMultiplier:F2}x");
                     }
 
                     guiHelper?.AddSpace(10);
-
-                    if (guiHelper?.Button("Forward 50u", ButtonVariant.Default, ButtonSize.Default) ?? false)
-                        movementManager?.TeleportForward(50f);
+                    DrawTeleportButton("Forward 50u", 50f);
                     guiHelper?.AddSpace(6);
-                    if (guiHelper?.Button("Forward 100u", ButtonVariant.Default, ButtonSize.Default) ?? false)
-                        movementManager?.TeleportForward(100f);
+                    DrawTeleportButton("Forward 100u", 100f);
                     guiHelper?.AddSpace(6);
-                    if (guiHelper?.Button("Forward 200u", ButtonVariant.Default, ButtonSize.Default) ?? false)
-                        movementManager?.TeleportForward(200f);
+                    DrawTeleportButton("Forward 200u", 200f);
                 });
                 guiHelper?.EndCard();
 
@@ -450,10 +388,6 @@ namespace Mimesis_Mod_Menu.Core
                 MelonLogger.Error($"DrawPlayerTab error: {ex.Message}");
             }
         }
-
-        #endregion
-
-        #region Tab Combat
 
         void DrawCombatTab()
         {
@@ -466,12 +400,12 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper?.CardContent(() =>
                 {
                     if (guiHelper?.Button("Kill All Players", ButtonVariant.Destructive, ButtonSize.Default) ?? false)
-                        KillAllPlayers();
+                        KillAllActors(ActorType.Player);
 
                     guiHelper?.AddSpace(10);
 
                     if (guiHelper?.Button("Kill All Monsters", ButtonVariant.Destructive, ButtonSize.Default) ?? false)
-                        KillAllMonsters();
+                        KillAllActors(ActorType.Monster);
                 });
                 guiHelper?.EndCard();
 
@@ -483,10 +417,6 @@ namespace Mimesis_Mod_Menu.Core
             }
         }
 
-        #endregion
-
-        #region Tab Loot
-
         void DrawLootTab()
         {
             try
@@ -497,18 +427,19 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper?.CardTitle("Item Collection");
                 guiHelper?.CardContent(() =>
                 {
-                    string buttonText = (pickupManager?.isActive ?? false) ? "Stop Picking Up" : "Pickup All Items";
-                    ButtonVariant variant = (pickupManager?.isActive ?? false) ? ButtonVariant.Destructive : ButtonVariant.Default;
+                    bool isActive = pickupManager?.isActive ?? false;
+                    string buttonText = isActive ? "Stop Picking Up" : "Pickup All Items";
+                    ButtonVariant variant = isActive ? ButtonVariant.Destructive : ButtonVariant.Default;
 
                     if (guiHelper?.Button(buttonText, variant, ButtonSize.Default) ?? false)
                     {
-                        if (pickupManager?.isActive ?? false)
+                        if (isActive)
                             pickupManager?.Stop();
                         else
                             pickupManager?.StartPickupAll();
                     }
 
-                    guiHelper?.MutedLabel((pickupManager?.isActive ?? false) ? "Actively picking up items..." : "Click to start pickup");
+                    guiHelper?.MutedLabel(isActive ? "Actively picking up items..." : "Click to start pickup");
                 });
                 guiHelper?.EndCard();
 
@@ -518,23 +449,14 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper?.CardTitle("Auto Loot");
                 guiHelper?.CardContent(() =>
                 {
-                    bool autoLootEnabled = autoLootManager?.IsEnabled ?? false;
-                    bool newAutoLoot = guiHelper?.Switch("Auto Loot Enabled", autoLootEnabled) ?? false;
-                    if (newAutoLoot != autoLootEnabled)
-                    {
-                        autoLootManager?.SetEnabled(newAutoLoot);
-                        configManager?.SetBool("autoLootEnabled", newAutoLoot);
-                        SaveConfigDebounced();
-                    }
+                    DrawBoolSwitch("Auto Loot Enabled", x => state.AutoLoot = x, () => state.AutoLoot, "autoLoot");
 
-                    if (autoLootManager?.IsEnabled ?? false)
+                    if (state.AutoLoot)
                     {
                         guiHelper?.AddSpace(8);
-                        float distance = autoLootManager?.GetDistance() ?? 50f;
-                        DrawLabeledSlider("Detection Range", ref distance, 10f, 200f, "m");
-                        autoLootManager?.SetDistance(distance);
-                        configManager?.SetFloat("autoLootDistance", distance);
-                        guiHelper?.MutedLabel($"Current: {distance:F1}m");
+                        DrawFloatSlider("Detection Range", x => state.AutoLootDistance = x, () => state.AutoLootDistance, 10f, 200f, "m", "autoLootDistance");
+                        autoLootManager?.SetDistance(state.AutoLootDistance);
+                        guiHelper?.MutedLabel($"Current: {state.AutoLootDistance:F1}m");
                     }
                 });
                 guiHelper?.EndCard();
@@ -545,11 +467,11 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper?.CardTitle("Shop Features");
                 guiHelper?.CardContent(() =>
                 {
-                    DrawToggleWithSave("Force Buy", () => Patches.forceBuyEnabled, (v) => Patches.forceBuyEnabled = v, "");
+                    DrawPatchToggle("Force Buy", () => configManager.GetBool("forceBuyEnabled", false), v => configManager.SetBool("forceBuyEnabled", v));
                     guiHelper?.AddSpace(10);
-                    DrawToggleWithSave("Force Repair", () => Patches.forceRepairEnabled, (v) => Patches.forceRepairEnabled = v, "");
+                    DrawPatchToggle("Force Repair", () => configManager.GetBool("forceRepairEnabled", false), v => configManager.SetBool("forceRepairEnabled", v));
                     guiHelper?.AddSpace(10);
-                    DrawToggleWithSave("Infinite Currency", () => Patches.infiniteCurrencyEnabled, (v) => Patches.infiniteCurrencyEnabled = v, "");
+                    DrawPatchToggle("Infinite Currency", () => configManager.GetBool("infiniteCurrencyEnabled", false), v => configManager.SetBool("infiniteCurrencyEnabled", v));
                 });
                 guiHelper?.EndCard();
 
@@ -560,11 +482,11 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper?.CardDescription("Restart required");
                 guiHelper?.CardContent(() =>
                 {
-                    DrawToggleWithRestart("Infinite Durability", () => Patches.durabilityPatchEnabled, (v) => Patches.durabilityPatchEnabled = v, "");
+                    DrawPatchToggle("Infinite Durability", () => configManager.GetBool("durabilityPatchEnabled", false), v => configManager.SetBool("durabilityPatchEnabled", v), true);
                     guiHelper?.AddSpace(10);
-                    DrawToggleWithRestart("Infinite Price", () => Patches.pricePatchEnabled, (v) => Patches.pricePatchEnabled = v, "");
+                    DrawPatchToggle("Infinite Price", () => configManager.GetBool("pricePatchEnabled", false), v => configManager.SetBool("pricePatchEnabled", v), true);
                     guiHelper?.AddSpace(10);
-                    DrawToggleWithRestart("Infinite Gauge", () => Patches.gaugePatchEnabled, (v) => Patches.gaugePatchEnabled = v, "");
+                    DrawPatchToggle("Infinite Gauge", () => configManager.GetBool("gaugePatchEnabled", false), v => configManager.SetBool("gaugePatchEnabled", v), true);
                 });
                 guiHelper?.EndCard();
 
@@ -598,9 +520,7 @@ namespace Mimesis_Mod_Menu.Core
                     {
                         guiHelper?.MutedLabel("Pending items:");
                         foreach (var kvp in pending)
-                        {
                             guiHelper?.MutedLabel($"  ID {kvp.Key} x{kvp.Value}");
-                        }
                     }
                     else
                     {
@@ -617,10 +537,6 @@ namespace Mimesis_Mod_Menu.Core
             }
         }
 
-        #endregion
-
-        #region Tab Visual
-
         void DrawVisualTab()
         {
             try
@@ -631,19 +547,12 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper?.CardTitle("ESP Settings");
                 guiHelper?.CardContent(() =>
                 {
-                    bool newEspEnabled = guiHelper?.Switch("Enable ESP", MainGUI.espEnabled) ?? false;
-                    if (newEspEnabled != MainGUI.espEnabled)
-                    {
-                        MainGUI.espEnabled = newEspEnabled;
-                        configManager?.SetBool("espEnabled", newEspEnabled);
-                        SaveConfigDebounced();
-                    }
+                    DrawBoolSwitch("Enable ESP", x => state.ESP = x, () => state.ESP, "espEnabled");
 
-                    if (MainGUI.espEnabled)
+                    if (state.ESP)
                     {
                         guiHelper?.AddSpace(10);
-                        DrawLabeledSlider("Distance", ref espDistance, 50f, 500f, "m");
-                        configManager?.SetFloat("espDistance", espDistance);
+                        DrawFloatSlider("Distance", x => state.ESPDistance = x, () => state.ESPDistance, 50f, 500f, "m", "espDistance");
                     }
                 });
                 guiHelper?.EndCard();
@@ -655,25 +564,25 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper?.CardContent(() =>
                 {
                     guiHelper?.BeginHorizontalGroup();
+
                     guiHelper?.BeginVerticalGroup(GUILayout.Width(150));
-                    espShowPlayers = guiHelper?.Switch("Players", espShowPlayers) ?? false;
-                    espShowMonsters = guiHelper?.Switch("Monsters", espShowMonsters) ?? false;
-                    espShowLoot = guiHelper?.Switch("Loot", espShowLoot) ?? false;
+                    DrawBoolSwitch("Players", x => state.ESPShowPlayers = x, () => state.ESPShowPlayers, "espShowPlayers");
+                    DrawBoolSwitch("Monsters", x => state.ESPShowMonsters = x, () => state.ESPShowMonsters, "espShowMonsters");
+                    DrawBoolSwitch("Loot", x => state.ESPShowLoot = x, () => state.ESPShowLoot, "espShowLoot");
                     guiHelper?.EndVerticalGroup();
 
                     guiHelper?.BeginVerticalGroup(GUILayout.Width(150));
-                    espShowInteractors = guiHelper?.Switch("Interactors", espShowInteractors) ?? false;
-                    espShowNPCs = guiHelper?.Switch("NPCs", espShowNPCs) ?? false;
-                    espShowFieldSkills = guiHelper?.Switch("Field Skills", espShowFieldSkills) ?? false;
+                    DrawBoolSwitch("Interactors", x => state.ESPShowInteractors = x, () => state.ESPShowInteractors, "espShowInteractors");
+                    DrawBoolSwitch("NPCs", x => state.ESPShowNPCs = x, () => state.ESPShowNPCs, "espShowNPCs");
+                    DrawBoolSwitch("Field Skills", x => state.ESPShowFieldSkills = x, () => state.ESPShowFieldSkills, "espShowFieldSkills");
                     guiHelper?.EndVerticalGroup();
 
                     guiHelper?.BeginVerticalGroup(GUILayout.Width(150));
-                    espShowProjectiles = guiHelper?.Switch("Projectiles", espShowProjectiles) ?? false;
-                    espShowAuraSkills = guiHelper?.Switch("Aura Skills", espShowAuraSkills) ?? false;
+                    DrawBoolSwitch("Projectiles", x => state.ESPShowProjectiles = x, () => state.ESPShowProjectiles, "espShowProjectiles");
+                    DrawBoolSwitch("Aura Skills", x => state.ESPShowAuraSkills = x, () => state.ESPShowAuraSkills, "espShowAuraSkills");
                     guiHelper?.EndVerticalGroup();
+
                     guiHelper?.EndHorizontalGroup();
-
-                    SaveConfigDebounced();
                 });
                 guiHelper?.EndCard();
 
@@ -683,15 +592,7 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper?.CardTitle("Lighting");
                 guiHelper?.CardContent(() =>
                 {
-                    bool fullbrightEnabled = fullbrightManager?.IsEnabled ?? false;
-                    bool newFullbright = guiHelper?.Switch("Fullbright", fullbrightEnabled) ?? false;
-                    if (newFullbright != fullbrightEnabled)
-                    {
-                        fullbrightManager?.SetEnabled(newFullbright);
-                        fullbright = newFullbright;
-                        configManager?.SetBool("fullbright", newFullbright);
-                        SaveConfigDebounced();
-                    }
+                    DrawBoolSwitch("Fullbright", x => state.Fullbright = x, () => state.Fullbright, "fullbright");
                 });
                 guiHelper?.EndCard();
 
@@ -702,10 +603,6 @@ namespace Mimesis_Mod_Menu.Core
                 MelonLogger.Error($"DrawVisualTab error: {ex.Message}");
             }
         }
-
-        #endregion
-
-        #region Tab Entities
 
         void DrawEntitiesTab()
         {
@@ -736,14 +633,10 @@ namespace Mimesis_Mod_Menu.Core
                     {
                         int maxDisplay = Mathf.Min(displayPlayers.Length, 15);
                         for (int i = 0; i < maxDisplay; i++)
-                        {
                             DrawActorListItem(displayPlayers[i]);
-                        }
 
                         if (displayPlayers.Length > maxDisplay)
-                        {
                             guiHelper?.MutedLabel($"...and {displayPlayers.Length - maxDisplay} more");
-                        }
                     }
                 });
                 guiHelper?.EndCard();
@@ -756,7 +649,6 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper?.EndVerticalGroup();
 
                 guiHelper?.EndHorizontalGroup();
-
                 guiHelper?.EndVerticalGroup();
             }
             catch (Exception ex)
@@ -769,7 +661,7 @@ namespace Mimesis_Mod_Menu.Core
         {
             try
             {
-                ProtoActor? localPlayer = PlayerAPI.GetLocalPlayer();
+                ProtoActor localPlayer = PlayerAPI.GetLocalPlayer();
 
                 guiHelper?.BeginCard(width: -1, height: 600);
                 guiHelper?.CardTitle("Entity Actions");
@@ -812,12 +704,12 @@ namespace Mimesis_Mod_Menu.Core
                                 if (selectedPlayer.ActorType == ActorType.Player)
                                 {
                                     if (guiHelper?.Button("Kill Player", ButtonVariant.Destructive, ButtonSize.Default) ?? false)
-                                        KillPlayer(selectedPlayer);
+                                        KillActor(selectedPlayer);
                                 }
                                 else if (selectedPlayer.ActorType == ActorType.Monster)
                                 {
                                     if (guiHelper?.Button("Kill Monster", ButtonVariant.Destructive, ButtonSize.Default) ?? false)
-                                        KillMonster(selectedPlayer);
+                                        KillActor(selectedPlayer);
                                 }
                             }
                         }
@@ -830,10 +722,6 @@ namespace Mimesis_Mod_Menu.Core
                 MelonLogger.Error($"DrawEntityActionsPanel error: {ex.Message}");
             }
         }
-
-        #endregion
-
-        #region Tab Settings
 
         void DrawSettingsTab()
         {
@@ -874,9 +762,8 @@ namespace Mimesis_Mod_Menu.Core
 
                     if (pendingKey != KeyCode.None && !isListeningForHotkey && !string.IsNullOrEmpty(editingHotkey))
                     {
-                        HotkeyConfig newHotkey = new HotkeyConfig(pendingKey, pendingShift, pendingCtrl, pendingAlt);
+                        var newHotkey = new HotkeyConfig(pendingKey, pendingShift, pendingCtrl, pendingAlt);
                         configManager?.SetHotkey(editingHotkey, newHotkey);
-                        SaveConfig();
                         pendingKey = KeyCode.None;
                         editingHotkey = "";
                     }
@@ -890,17 +777,14 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper?.CardContent(() =>
                 {
                     if (guiHelper?.Button("Save Configuration", ButtonVariant.Default, ButtonSize.Default) ?? false)
-                    {
-                        configManager?.SaveMainConfig();
-                        configManager?.SaveHotkeysConfig();
                         MelonLogger.Msg("Configuration saved");
-                    }
 
                     guiHelper?.AddSpace(6);
 
                     if (guiHelper?.Button("Reload Configuration", ButtonVariant.Default, ButtonSize.Default) ?? false)
                     {
                         configManager?.LoadAllConfigs();
+                        LoadAllSettings();
                         MelonLogger.Msg("Configuration reloaded");
                     }
                 });
@@ -914,9 +798,53 @@ namespace Mimesis_Mod_Menu.Core
             }
         }
 
-        #endregion
+        private void DrawBoolSwitch(string label, Action<bool> setter, Func<bool> getter, string configKey)
+        {
+            bool oldValue = getter();
+            bool newValue = guiHelper?.Switch(label, oldValue) ?? false;
+            if (newValue != oldValue)
+            {
+                setter(newValue);
+                SaveSetting(configKey, newValue);
+            }
+        }
 
-        #region Helpers
+        private void DrawFloatSlider(string label, Action<float> setter, Func<float> getter, float min, float max, string suffix, string configKey)
+        {
+            float oldValue = getter();
+            guiHelper?.BeginHorizontalGroup();
+            guiHelper?.Label($"{label}: {oldValue:F1}{suffix}", LabelVariant.Default);
+            float newValue = GUILayout.HorizontalSlider(oldValue, min, max, GUILayout.ExpandWidth(true));
+            guiHelper?.EndHorizontalGroup();
+
+            if (newValue != oldValue)
+            {
+                setter(newValue);
+                SaveSetting(configKey, newValue);
+            }
+        }
+
+        private void DrawPatchToggle(string label, Func<bool> getter, Action<bool> setter, bool requiresRestart = false)
+        {
+            bool oldValue = getter();
+            bool newValue = guiHelper?.Switch(label, oldValue) ?? false;
+
+            if (oldValue != newValue)
+            {
+                setter(newValue);
+                if (requiresRestart)
+                {
+                    guiHelper?.AddSpace(6);
+                    guiHelper?.DestructiveLabel("Restart game to apply");
+                }
+            }
+        }
+
+        private void DrawTeleportButton(string label, float distance)
+        {
+            if (guiHelper?.Button(label, ButtonVariant.Default, ButtonSize.Default) ?? false)
+                movementManager?.TeleportForward(distance);
+        }
 
         private void UpdatePlayerCache()
         {
@@ -941,7 +869,7 @@ namespace Mimesis_Mod_Menu.Core
             try
             {
                 string label = actor.nickName;
-                ProtoActor? localPlayer = PlayerAPI.GetLocalPlayer();
+                ProtoActor localPlayer = PlayerAPI.GetLocalPlayer();
                 string typeLabel = actor.ActorType == ActorType.Player ? "[P]" : "[M]";
 
                 if (localPlayer != null && actor.ActorID == localPlayer.ActorID)
@@ -961,7 +889,7 @@ namespace Mimesis_Mod_Menu.Core
             }
         }
 
-        private void DrawActorInfo(ProtoActor? selectedTarget, ProtoActor? localPlayer)
+        private void DrawActorInfo(ProtoActor selectedTarget, ProtoActor localPlayer)
         {
             try
             {
@@ -984,198 +912,47 @@ namespace Mimesis_Mod_Menu.Core
             }
         }
 
-        private void KillPlayer(ProtoActor target)
+        private void KillActor(ProtoActor target)
         {
             try
             {
-                if (target != null && target.ActorType == ActorType.Player)
-                {
-                    target.OnActorDeath(
-                        new ProtoActor.ActorDeathInfo
-                        {
-                            DeadActorID = target.ActorID,
-                            ReasonOfDeath = ReasonOfDeath.None,
-                            AttackerActorID = 0,
-                            LinkedMasterID = 0,
-                        }
-                    );
-                }
+                if (target == null)
+                    return;
+
+                target.OnActorDeath(
+                    new ProtoActor.ActorDeathInfo
+                    {
+                        DeadActorID = target.ActorID,
+                        ReasonOfDeath = ReasonOfDeath.None,
+                        AttackerActorID = 0,
+                        LinkedMasterID = 0,
+                    }
+                );
             }
             catch (Exception ex)
             {
-                MelonLogger.Error($"KillPlayer error: {ex.Message}");
+                MelonLogger.Error($"KillActor error: {ex.Message}");
             }
         }
 
-        private void KillMonster(ProtoActor target)
-        {
-            try
-            {
-                if (target != null && target.ActorType == ActorType.Monster)
-                {
-                    target.OnActorDeath(
-                        new ProtoActor.ActorDeathInfo
-                        {
-                            DeadActorID = target.ActorID,
-                            ReasonOfDeath = ReasonOfDeath.None,
-                            AttackerActorID = 0,
-                            LinkedMasterID = 0,
-                        }
-                    );
-                }
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Error($"KillMonster error: {ex.Message}");
-            }
-        }
-
-        private void KillAllPlayers()
+        private void KillAllActors(ActorType type)
         {
             try
             {
                 ProtoActor[] allActors = PlayerAPI.GetAllPlayers();
                 foreach (ProtoActor actor in allActors)
                 {
-                    if (actor != null && actor.ActorType == ActorType.Player && !actor.dead)
-                    {
-                        actor.OnActorDeath(
-                            new ProtoActor.ActorDeathInfo
-                            {
-                                DeadActorID = actor.ActorID,
-                                ReasonOfDeath = ReasonOfDeath.None,
-                                AttackerActorID = 0,
-                                LinkedMasterID = 0,
-                            }
-                        );
-                    }
+                    if (actor != null && actor.ActorType == type && !actor.dead)
+                        KillActor(actor);
                 }
-                MelonLogger.Msg("Killed all players");
+
+                string typeName = type == ActorType.Player ? "players" : "monsters";
+                MelonLogger.Msg($"Killed all {typeName}");
             }
             catch (Exception ex)
             {
-                MelonLogger.Error($"KillAllPlayers error: {ex.Message}");
+                MelonLogger.Error($"KillAllActors error: {ex.Message}");
             }
         }
-
-        private void KillAllMonsters()
-        {
-            try
-            {
-                ProtoActor[] allActors = PlayerAPI.GetAllPlayers();
-                foreach (ProtoActor actor in allActors)
-                {
-                    if (actor != null && actor.ActorType == ActorType.Monster && !actor.dead)
-                    {
-                        actor.OnActorDeath(
-                            new ProtoActor.ActorDeathInfo
-                            {
-                                DeadActorID = actor.ActorID,
-                                ReasonOfDeath = ReasonOfDeath.None,
-                                AttackerActorID = 0,
-                                LinkedMasterID = 0,
-                            }
-                        );
-                    }
-                }
-                MelonLogger.Msg("Killed all monsters");
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Error($"KillAllMonsters error: {ex.Message}");
-            }
-        }
-
-        private void DrawLabeledSlider(string label, ref float value, float min, float max, string suffix)
-        {
-            try
-            {
-                guiHelper?.BeginHorizontalGroup();
-                guiHelper?.Label($"{label}: {value:F1}{suffix}", LabelVariant.Default);
-                value = GUILayout.HorizontalSlider(value, min, max, GUILayout.ExpandWidth(true));
-                guiHelper?.EndHorizontalGroup();
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Error($"DrawLabeledSlider error: {ex.Message}");
-            }
-        }
-
-        private void DrawToggleWithRestart(string label, Func<bool> getter, Action<bool> setter, string description = "")
-        {
-            try
-            {
-                bool oldValue = getter();
-                bool newValue = guiHelper?.Switch(label, oldValue) ?? false;
-
-                if (!string.IsNullOrEmpty(description))
-                    guiHelper?.MutedLabel(description);
-
-                if (oldValue != newValue)
-                {
-                    setter(newValue);
-                    SaveConfigDebounced();
-                    guiHelper?.AddSpace(6);
-                    guiHelper?.DestructiveLabel("Restart game to apply");
-                }
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Error($"DrawToggleWithRestart error: {ex.Message}");
-            }
-        }
-
-        private void DrawToggleWithSave(string label, Func<bool> getter, Action<bool> setter, string description = "")
-        {
-            try
-            {
-                bool oldValue = getter();
-                bool newValue = guiHelper?.Switch(label, oldValue) ?? false;
-
-                if (!string.IsNullOrEmpty(description))
-                    guiHelper?.MutedLabel(description);
-
-                if (oldValue != newValue)
-                {
-                    setter(newValue);
-                    SaveConfigDebounced();
-                }
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Error($"DrawToggleWithSave error: {ex.Message}");
-            }
-        }
-
-        private void SaveConfigDebounced()
-        {
-            try
-            {
-                if (Time.time - lastConfigSaveTime > 0.5f)
-                {
-                    SaveConfig();
-                    lastConfigSaveTime = Time.time;
-                }
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Error($"SaveConfigDebounced error: {ex.Message}");
-            }
-        }
-
-        private void SaveConfig()
-        {
-            try
-            {
-                configManager?.SaveMainConfig();
-                configManager?.SaveHotkeysConfig();
-            }
-            catch (Exception ex)
-            {
-                MelonLogger.Error($"SaveConfig error: {ex.Message}");
-            }
-        }
-
-        #endregion
     }
 }

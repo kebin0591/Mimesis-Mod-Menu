@@ -8,16 +8,16 @@ namespace Mimesis_Mod_Menu.Core.Config
     public class HotkeyConfig
     {
         public KeyCode Key { get; set; }
-        public bool RequireShift { get; set; }
-        public bool RequireCtrl { get; set; }
-        public bool RequireAlt { get; set; }
+        public bool Shift { get; set; }
+        public bool Ctrl { get; set; }
+        public bool Alt { get; set; }
 
         public HotkeyConfig(KeyCode key = KeyCode.None, bool shift = false, bool ctrl = false, bool alt = false)
         {
             Key = key;
-            RequireShift = shift;
-            RequireCtrl = ctrl;
-            RequireAlt = alt;
+            Shift = shift;
+            Ctrl = ctrl;
+            Alt = alt;
         }
 
         public bool IsPressed()
@@ -31,24 +31,11 @@ namespace Mimesis_Mod_Menu.Core.Config
                 if (keyboard == null)
                     return false;
 
-                string keyName = Key.ToString();
-                var targetKey = keyboard.FindKeyOnCurrentKeyboardLayout(keyName);
-
-                if (targetKey == null)
+                var targetKey = keyboard.FindKeyOnCurrentKeyboardLayout(Key.ToString());
+                if (targetKey?.wasPressedThisFrame != true)
                     return false;
 
-                if (!targetKey.wasPressedThisFrame)
-                    return false;
-
-                bool hasShift = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
-                bool hasCtrl = keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;
-                bool hasAlt = keyboard.leftAltKey.isPressed || keyboard.rightAltKey.isPressed;
-
-                bool shiftMatch = RequireShift == hasShift;
-                bool ctrlMatch = RequireCtrl == hasCtrl;
-                bool altMatch = RequireAlt == hasAlt;
-
-                return shiftMatch && ctrlMatch && altMatch;
+                return CheckModifiers(keyboard);
             }
             catch (Exception ex)
             {
@@ -57,16 +44,25 @@ namespace Mimesis_Mod_Menu.Core.Config
             }
         }
 
+        private bool CheckModifiers(Keyboard keyboard)
+        {
+            bool shiftPressed = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
+            bool ctrlPressed = keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;
+            bool altPressed = keyboard.leftAltKey.isPressed || keyboard.rightAltKey.isPressed;
+
+            return Shift == shiftPressed && Ctrl == ctrlPressed && Alt == altPressed;
+        }
+
         public override string ToString()
         {
             try
             {
                 string result = Key.ToString();
-                if (RequireCtrl)
+                if (Ctrl)
                     result = "Ctrl+" + result;
-                if (RequireShift)
+                if (Shift)
                     result = "Shift+" + result;
-                if (RequireAlt)
+                if (Alt)
                     result = "Alt+" + result;
                 return result;
             }
@@ -77,23 +73,23 @@ namespace Mimesis_Mod_Menu.Core.Config
             }
         }
 
-        public static HotkeyConfig Parse(string str)
+        public static HotkeyConfig Parse(string input)
         {
             try
             {
-                if (string.IsNullOrEmpty(str) || str.Equals("None", StringComparison.OrdinalIgnoreCase))
+                if (string.IsNullOrEmpty(input) || input.Equals("None", StringComparison.OrdinalIgnoreCase))
                     return new HotkeyConfig();
 
-                bool ctrl = str.Contains("Ctrl+");
-                bool shift = str.Contains("Shift+");
-                bool alt = str.Contains("Alt+");
+                bool ctrl = input.Contains("Ctrl+");
+                bool shift = input.Contains("Shift+");
+                bool alt = input.Contains("Alt+");
 
-                string keyPart = str.Replace("Ctrl+", "").Replace("Shift+", "").Replace("Alt+", "").Trim();
+                string keyPart = input.Replace("Ctrl+", "").Replace("Shift+", "").Replace("Alt+", "").Trim();
 
                 if (Enum.TryParse<KeyCode>(keyPart, true, out var key))
                     return new HotkeyConfig(key, shift, ctrl, alt);
 
-                MelonLogger.Warning($"Failed to parse hotkey: {str} - key part: {keyPart}");
+                MelonLogger.Warning($"Failed to parse hotkey: {input}");
                 return new HotkeyConfig();
             }
             catch (Exception ex)
