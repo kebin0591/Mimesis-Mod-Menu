@@ -42,7 +42,7 @@ jobs:
         id: version-check
         run: |
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          CS_VERSION=$(grep -oP '\[assembly: MelonInfo\(typeof\(Loader\), "MimesisModMenu", "\K[^"]+' Core/Loader.cs)
+          CS_VERSION=$(grep -oP '\[assembly: MelonInfo\(typeof\(Loader\), "ModMenu", "\K[^"]+' Core/Loader.cs)
           echo "Tag version: $TAG_VERSION"
           echo "Loader.cs version: $CS_VERSION"
           if [ "$TAG_VERSION" != "$CS_VERSION" ]; then
