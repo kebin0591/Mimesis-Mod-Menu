@@ -255,9 +255,22 @@ namespace Mimesis_Mod_Menu.Core
         }
     }
 
-    [HarmonyPatch(typeof(EquipmentItemElement), MethodType.Constructor, new[] { typeof(int), typeof(long), typeof(bool), typeof(int), typeof(int), typeof(int), typeof(InventoryController) })]
+    [HarmonyPatch]
     internal static class EquipmentItemElementConstructorPatch
     {
+        private static MethodBase TargetMethod()
+        {
+            try
+            {
+                return AccessTools.Constructor(typeof(EquipmentItemElement), new Type[] { typeof(int), typeof(long), typeof(bool), typeof(int), typeof(int), typeof(int), typeof(InventoryController) });
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Error($"EquipmentItemElementConstructorPatch TargetMethod error: {ex.Message}");
+                return null;
+            }
+        }
+
         private static void Postfix(EquipmentItemElement __instance)
         {
             try
