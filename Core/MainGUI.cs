@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using MelonLoader;
 using Mimesis_Mod_Menu.Core.Config;
 using Mimesis_Mod_Menu.Core.Features;
+using Mimic;
 using Mimic.Actors;
 using MimicAPI.GameAPI;
 using ReluProtocol.Enum;
@@ -477,6 +479,11 @@ namespace Mimesis_Mod_Menu.Core
                     DrawToggleButton("Infinite Currency", x => state.InfiniteCurrency = x, () => state.InfiniteCurrency);
                     guiHelper?.AddSpace(8);
                     DrawToggleButton("Infinite Price", x => state.InfinitePrice = x, () => state.InfinitePrice);
+                    guiHelper?.AddSpace(8);
+                    if (guiHelper?.Button("Add 10,000 Currency", ControlVariant.Default, ControlSize.Default) ?? false)
+                    {
+                        AddCurrency(10000);
+                    }
                 });
                 guiHelper?.EndCard();
 
@@ -887,6 +894,87 @@ namespace Mimesis_Mod_Menu.Core
                 MelonLogger.Error($"KillActor error: {ex.Message}");
             }
         }
+
+
+        /// <summary>
+        /// Adds currency to the player's account.
+        /// Uses Hub singleton → VWorld → VRoomManager → MaintenanceRoom path (most reliable).
+        /// Falls back to RoomAPI and other methods if Hub is not available.
+        /// </summary>
+        private void AddCurrency(int amount)
+        {
+            try
+            {
+                // Primary method: Hub singleton → VWorld → VRoomManager → MaintenanceRoom
+                // This is the most reliable path discovered through debugging
+                var hub = UnityEngine.Object.FindObjectOfType<Hub>();
+                if (hub != null)
+                {
+                    var vworld = ReflectionHelper.GetFieldValue(hub, "vworld") ?? ReflectionHelper.GetPropertyValue(hub, "vworld");
+                    if (vworld != null)
+                    {
+                        var roomManager = ReflectionHelper.GetFieldValue(vworld, "_vRoomManager") ?? ReflectionHelper.GetPropertyValue(vworld, "VRoomManager");
+                        if (roomManager != null)
+                        {
+                            var vrooms = ReflectionHelper.GetFieldValue(roomManager, "_vrooms") as IDictionary;
+                            if (vrooms != null)
+                            {
+                                foreach (DictionaryEntry entry in vrooms)
+                                {
+                                    var room = entry.Value;
+                                    if (room == null) continue;
+                                    
+                                    if (room is MaintenanceRoom mRoom)
+                                    {
+                                        ReflectionHelper.InvokeMethod(mRoom, "AddCurrency", amount);
+                                        MelonLogger.Msg($"[AddCurrency] Added {amount} currency successfully!");
+                                        return;
+                                    }
+                                    
+                                    // Fallback: try Currency property directly
+                                    try
+                                    {
+                                        var currentVal = ReflectionHelper.GetPropertyValue(room, "Currency");
+                                        if (currentVal != null)
+                                        {
+                                            ReflectionHelper.SetPropertyValue(room, "Currency", (int)currentVal + amount);
+                                            MelonLogger.Msg($"[AddCurrency] Added {amount} currency successfully!");
+                                            return;
+                                        }
+                                    }
+                                    catch { }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Fallback: Try RoomAPI (sometimes works depending on game state)
+                var currentRoom = RoomAPI.GetCurrentRoom();
+                if (currentRoom is MaintenanceRoom maintenanceRoom)
+                {
+                    ReflectionHelper.InvokeMethod(maintenanceRoom, "AddCurrency", amount);
+                    MelonLogger.Msg($"[AddCurrency] Added {amount} currency successfully!");
+                    return;
+                }
+
+                // Fallback: Try CoreAPI.GetVWorld()
+                var coreVworld = CoreAPI.GetVWorld();
+                if (coreVworld != null)
+                {
+                    ReflectionHelper.InvokeMethod(coreVworld, "AdminCommandAddCurrency", amount);
+                    MelonLogger.Msg($"[AddCurrency] Added {amount} currency via admin command!");
+                    return;
+                }
+
+                MelonLogger.Warning("[AddCurrency] Failed: No valid room found. Make sure you're in a game session.");
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Error($"[AddCurrency] Error: {ex.Message}");
+            }
+        }
+
 
         private void KillAllActors(ActorType type)
         {
