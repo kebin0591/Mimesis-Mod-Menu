@@ -43,6 +43,10 @@ namespace Mimesis_Mod_Menu.Core
             pendingAlt;
         private string itemSpawnIDInput = "1001";
         private string itemSpawnQuantityInput = "1";
+        private string itemSearchFilter = "";
+        private Vector2 itemListScrollPosition;
+        private List<(int id, string name)> cachedItemList = new List<(int, string)>();
+        private bool itemListLoaded = false;
 
         private bool showDemoWindow = true;
         private float lastMenuToggleTime;
@@ -496,6 +500,88 @@ namespace Mimesis_Mod_Menu.Core
                     DrawToggleButton("Force Buy", x => state.ForceBuy = x, () => state.ForceBuy);
                     guiHelper?.AddSpace(8);
                     DrawToggleButton("Force Repair", x => state.ForceRepair = x, () => state.ForceRepair);
+                });
+                guiHelper?.EndCard();
+
+                guiHelper?.AddSpace(12);
+
+                guiHelper?.BeginCard(width: -1, height: -1);
+                guiHelper?.CardTitle("Item Spawner");
+                guiHelper?.CardContent(() =>
+                {
+                    // Item ID and Quantity inputs
+                    GUILayout.BeginHorizontal();
+                    guiHelper?.Label("Item ID:");
+                    itemSpawnIDInput = GUILayout.TextField(itemSpawnIDInput, GUILayout.Width(100));
+                    guiHelper?.Label("Qty:");
+                    itemSpawnQuantityInput = GUILayout.TextField(itemSpawnQuantityInput, GUILayout.Width(50));
+                    GUILayout.EndHorizontal();
+
+                    guiHelper?.AddSpace(4);
+
+                    if (guiHelper?.Button("Spawn Item", ControlVariant.Default, ControlSize.Default) ?? false)
+                    {
+                        if (int.TryParse(itemSpawnIDInput, out int itemId) && int.TryParse(itemSpawnQuantityInput, out int qty))
+                        {
+                            SpawnItem(itemId, qty);
+                        }
+                        else
+                        {
+                            MelonLogger.Warning("[ItemSpawner] Invalid item ID or quantity");
+                        }
+                    }
+
+                    guiHelper?.AddSpace(12);
+                    GUILayout.Box("", GUILayout.ExpandWidth(true), GUILayout.Height(1)); // Separator line
+                    guiHelper?.AddSpace(8);
+
+                    // Item Browser section
+                    GUILayout.BeginHorizontal();
+                    guiHelper?.Label("Item Browser");
+                    if (guiHelper?.Button(itemListLoaded ? "Refresh List" : "Load Items", ControlVariant.Secondary, ControlSize.Small) ?? false)
+                    {
+                        LoadItemList();
+                    }
+                    GUILayout.EndHorizontal();
+
+                    if (itemListLoaded && cachedItemList.Count > 0)
+                    {
+                        guiHelper?.AddSpace(4);
+                        
+                        GUILayout.BeginHorizontal();
+                        guiHelper?.Label("Search:");
+                        itemSearchFilter = GUILayout.TextField(itemSearchFilter, GUILayout.Width(200));
+                        GUILayout.EndHorizontal();
+
+                        guiHelper?.AddSpace(4);
+                        guiHelper?.MutedLabel($"Found {cachedItemList.Count} items");
+
+                        // Scrollable item list
+                        itemListScrollPosition = GUILayout.BeginScrollView(itemListScrollPosition, GUILayout.Height(200));
+                        
+                        var filteredItems = string.IsNullOrEmpty(itemSearchFilter) 
+                            ? cachedItemList.Take(50).ToList()
+                            : cachedItemList.Where(x => x.name.ToLower().Contains(itemSearchFilter.ToLower()) || x.id.ToString().Contains(itemSearchFilter)).Take(50).ToList();
+
+                        foreach (var item in filteredItems)
+                        {
+                            if (GUILayout.Button($"[{item.id}] {item.name}", GUILayout.ExpandWidth(true)))
+                            {
+                                itemSpawnIDInput = item.id.ToString();
+                                MelonLogger.Msg($"[ItemSpawner] Selected: {item.name} (ID: {item.id})");
+                            }
+                        }
+                        
+                        GUILayout.EndScrollView();
+                    }
+                    else if (!itemListLoaded)
+                    {
+                        guiHelper?.MutedLabel("Click 'Load Items' to browse available items");
+                    }
+                    else
+                    {
+                        guiHelper?.MutedLabel("No items found");
+                    }
                 });
                 guiHelper?.EndCard();
 
@@ -975,6 +1061,117 @@ namespace Mimesis_Mod_Menu.Core
             }
         }
 
+        /// <summary>
+        /// Spawns an item with the given MasterID directly into the player's inventory.
+        /// Uses ProtoActor.BuyItemByMasterId via Hub path.
+        /// </summary>
+        private void SpawnItem(int itemMasterID, int quantity = 1)
+        {
+            try
+            {
+                // Use the existing patch system which hooks into inventory slot change
+                // This is already implemented and working in Patches.cs
+                ItemSpawnerPatches.SetItemToSpawn(itemMasterID, quantity);
+                MelonLogger.Msg($"[ItemSpawner] Queued item {itemMasterID} x{quantity}");
+                MelonLogger.Msg("[ItemSpawner] Now press number keys (1-5) to switch inventory slot and spawn the item!");
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Error($"[ItemSpawner] Error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Loads the list of all available items from the game's data manager.
+        /// </summary>
+        private void LoadItemList()
+        {
+            try
+            {
+                cachedItemList.Clear();
+                
+                // Try to find DataManager and access ExcelDataManager.ItemInfoDict
+                var dataManager = UnityEngine.Object.FindObjectOfType<DataManager>();
+                if (dataManager != null)
+                {
+                    var excelDataManager = ReflectionHelper.GetFieldValue(dataManager, "_excelDataManager");
+                    if (excelDataManager != null)
+                    {
+                        // Get ItemInfoDict property
+                        var itemInfoDict = ReflectionHelper.GetPropertyValue(excelDataManager, "ItemInfoDict");
+                        if (itemInfoDict != null && itemInfoDict is IDictionary dict)
+                        {
+                            foreach (DictionaryEntry entry in dict)
+                            {
+                                int masterId = (int)entry.Key;
+                                var itemInfo = entry.Value;
+                                
+                                // Get item name from ItemMasterInfo
+                                string itemName = "Unknown";
+                                try
+                                {
+                                    var nameField = ReflectionHelper.GetFieldValue(itemInfo, "Name");
+                                    if (nameField != null)
+                                        itemName = nameField.ToString();
+                                }
+                                catch { }
+                                
+                                cachedItemList.Add((masterId, itemName));
+                            }
+                            
+                            // Sort by ID
+                            cachedItemList = cachedItemList.OrderBy(x => x.id).ToList();
+                            itemListLoaded = true;
+                            MelonLogger.Msg($"[ItemSpawner] Loaded {cachedItemList.Count} items from game data");
+                            return;
+                        }
+                    }
+                }
+
+                // Fallback: Try via Hub path
+                var hub = UnityEngine.Object.FindObjectOfType<Hub>();
+                if (hub != null)
+                {
+                    var excelDataMgr = ReflectionHelper.GetFieldValue(hub, "_excelDataManager") ?? ReflectionHelper.GetPropertyValue(hub, "ExcelDataManager");
+                    if (excelDataMgr != null)
+                    {
+                        var itemDict = ReflectionHelper.GetPropertyValue(excelDataMgr, "ItemInfoDict");
+                        if (itemDict != null && itemDict is IDictionary hubDict)
+                        {
+                            foreach (DictionaryEntry entry in hubDict)
+                            {
+                                int masterId = (int)entry.Key;
+                                var itemInfo = entry.Value;
+                                
+                                string itemName = "Unknown";
+                                try
+                                {
+                                    var nameField = ReflectionHelper.GetFieldValue(itemInfo, "Name");
+                                    if (nameField != null)
+                                        itemName = nameField.ToString();
+                                }
+                                catch { }
+                                
+                                cachedItemList.Add((masterId, itemName));
+                            }
+                            
+                            cachedItemList = cachedItemList.OrderBy(x => x.id).ToList();
+                            itemListLoaded = true;
+                            MelonLogger.Msg($"[ItemSpawner] Loaded {cachedItemList.Count} items via Hub");
+                            return;
+                        }
+                    }
+                }
+
+                MelonLogger.Warning("[ItemSpawner] Could not load item list - DataManager not found");
+                itemListLoaded = true; // Mark as attempted
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Error($"[ItemSpawner] LoadItemList error: {ex.Message}");
+                itemListLoaded = true;
+            }
+        }
 
         private void KillAllActors(ActorType type)
         {
