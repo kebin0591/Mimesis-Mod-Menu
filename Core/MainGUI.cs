@@ -1075,7 +1075,7 @@ namespace Mimesis_Mod_Menu.Core
                 // This is already implemented and working in Patches.cs
                 ItemSpawnerPatches.SetItemToSpawn(itemMasterID, quantity);
                 MelonLogger.Msg($"[ItemSpawner] Queued item {itemMasterID} x{quantity}");
-                MelonLogger.Msg("[ItemSpawner] Now press number keys (1-5) to switch inventory slot and spawn the item!");
+                MelonLogger.Msg("[ItemSpawner] Now change inventory slot and spawn the item!");
             }
             catch (Exception ex)
             {
