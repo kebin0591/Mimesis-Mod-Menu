@@ -44,7 +44,6 @@ namespace Mimesis_Mod_Menu.Core
             pendingCtrl,
             pendingAlt;
         private string itemSpawnIDInput = "1001";
-        private string itemSpawnQuantityInput = "1";
         private string itemSearchFilter = "";
         private Vector2 itemListScrollPosition;
         private List<(int id, string name)> cachedItemList = new List<(int, string)>();
@@ -511,25 +510,23 @@ namespace Mimesis_Mod_Menu.Core
                 guiHelper?.CardTitle("Item Spawner");
                 guiHelper?.CardContent(() =>
                 {
-                    // Item ID and Quantity inputs
+                    // Item ID input
                     GUILayout.BeginHorizontal();
                     guiHelper?.Label("Item ID:");
                     itemSpawnIDInput = GUILayout.TextField(itemSpawnIDInput, GUILayout.Width(100));
-                    guiHelper?.Label("Qty:");
-                    itemSpawnQuantityInput = GUILayout.TextField(itemSpawnQuantityInput, GUILayout.Width(50));
                     GUILayout.EndHorizontal();
 
                     guiHelper?.AddSpace(4);
 
                     if (guiHelper?.Button("Spawn Item", ControlVariant.Default, ControlSize.Default) ?? false)
                     {
-                        if (int.TryParse(itemSpawnIDInput, out int itemId) && int.TryParse(itemSpawnQuantityInput, out int qty))
+                        if (int.TryParse(itemSpawnIDInput, out int itemId))
                         {
-                            SpawnItem(itemId, qty);
+                            SpawnItem(itemId, 1);
                         }
                         else
                         {
-                            MelonLogger.Warning("[ItemSpawner] Invalid item ID or quantity");
+                            MelonLogger.Warning("[ItemSpawner] Invalid item ID");
                         }
                     }
 
