@@ -51,9 +51,23 @@ A mod menu for Mimesis with features for gameplay, player management, and visual
 - Force Buy Items - Force purchase items without cost
 - Force Repair - Force repair items without cost
 
+**Commerce**
+
+-   Add 10,000 Currency - Instantly add currency to your account
+-   Infinite Currency - Toggle unlimited currency (requires restart)
+-   Infinite Price - Unlimited item prices
+
+**Item Spawner** _(NEW)_
+
+-   Item Browser - Load and browse all available game items
+-   Search Items - Filter items by name or ID
+-   Spawn Item - Spawn any item directly to your inventory
+    -   Select item from browser or enter ID manually
+    -   Set quantity (1+)
+    -   Change item slots after spawning to add to inventory slot
+
 **Items (Requires Restart)**
 - Infinite Durability - Items never break
-- Infinite Price - Unlimited item prices
 - Infinite Gauge - Unlimited item gauges
 
 ### Actor Tab
@@ -76,3 +90,20 @@ A mod menu for Mimesis with features for gameplay, player management, and visual
 
 ## Contributing
 If you want features to be added, go to https://github.com/official-notfishvr/Mimesis-Mod-Menu/issues and create a new issue telling us what you want.
+
+## TO-DO
+
+### Item Tab
+- Add “Ignore Inventory Weight” feature
+- Add “Ignore Two-Handed Items” feature — allows switching items even if they normally require two hands
+- Add “All item stun” feature — All items can stun, like the stunstick.
+
+### Visual Tab
+- Add “Landmine ESP” feature
+- Add “Health ESP” feature
+- Add “ESP Chams” feature
+
+### Player Tab
+- Add “Instant interact” feature
+- Add “Instant hit to kill” feature
+- Add “Teleport other player” feature
